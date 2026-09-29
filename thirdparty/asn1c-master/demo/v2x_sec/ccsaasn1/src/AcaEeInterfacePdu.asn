@@ -1,0 +1,18 @@
+ AcaEeInterfacePdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS AcaEeInterfacePdu;
+IMPORTS Uint8,Time32 FROM SecurityBaseDataTypes
+Certificate FROM SecurityDataTypes
+;
+ AcaEeInterfacePdu::= CHOICE {
+    acaEeCertResponse  AcaEeCertResponse,
+    ...
+  }
+  AcaEeCertResponse ::= SEQUENCE {
+    version         Uint8 (1),
+    generationTime  Time32,
+    certificate     Certificate,
+    privateKeyInfo  OCTET STRING (SIZE (32)) OPTIONAL,
+    ...
+  }
+END

@@ -1,0 +1,119 @@
+V2XSecData-Encrypted DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+IMPORTS Uint8,Time32 FROM SecurityBaseDataTypes
+	Certificate FROM SecurityDataTypes
+	V2XSecData FROM SecurityDataTypes
+	ScmsPdu FROM ScmsPdu
+	eeEcaCertRequest FROM EcaEeInterfacePdu
+	AcaRaInterfacePdu FROM AcaRaInterfacePdu
+	EcaEeInterfacePdu FROM EcaEeInterfacePdu
+;
+ V2XSecData-Encrypted {Tbe} ::= V2XSecData (WITH COMPONENTS {
+    ...,
+    content (WITH COMPONENTS {
+      encryptedData (CONSTRAINED BY {
+        --encryption of-- Tbe
+      })
+    })
+  })
+  V2XSecData-EncryptedOpen ::= V2XSecData (WITH COMPONENTS {
+    ...,
+    content (WITH COMPONENTS {
+      encryptedData
+    })
+  })
+ V2XSecData-EncryptedSigned {Tbes, Aid} ::= V2XSecData-Signed {
+    V2XSecData-Encrypted {
+      Tbes
+    }, 
+    Aid
+  }
+ V2XSecData-Signed {Tbs, Aid} ::= V2XSecData (WITH COMPONENTS {
+    ...,
+    content (WITH COMPONENTS {
+      ...,
+      signedData (WITH COMPONENTS {
+        ...,
+        tbsData (WITH COMPONENTS {
+          ...,
+          payload (WITH COMPONENTS {
+            ...,
+            data (WITH COMPONENTS {
+              ...,
+              content (WITH COMPONENTS {
+                unsecuredData (CONTAINING Tbs)
+              })
+            })
+          }),
+          headerInfo (WITH COMPONENTS {
+            ...,
+            aid (Aid),
+            generationTime ABSENT,
+            expiryTime ABSENT,
+            generationLocation ABSENT,
+            p2pcdLearningRequest ABSENT,
+            missingCrlIdentifier ABSENT,
+            encryptionKey ABSENT
+          })
+        }),
+        signer (SignerSingleCert)
+      })
+    })
+  })
+  V2XSecData-SignedCertRequest {Tbscr, Signer} ::= 
+  V2XSecData (WITH COMPONENTS {
+    ...,
+    content (WITH COMPONENTS {
+    ...,
+      signedCertificateRequest (CONTAINING 
+      SignedCertificateRequest (WITH COMPONENTS {
+        ...,
+        tbsRequest (Tbscr),
+        signer (Signer)
+      }))
+    })
+  })
+ V2XSecData-SignedEncrypted {Tbse, Aid} ::= V2XSecData-Encrypted {
+    V2XSecData-Signed {
+      Tbse,
+      Aid
+    }
+  }
+ V2XSecData-SignedEncryptedCertRequest {Tbstecr, Signer} ::= 
+  V2XSecData-Encrypted {
+    V2XSecData-SignedCertRequest {
+      Tbstecr, 
+      Signer
+    }
+  }
+ V2XSecData-Unsecured {Tbu} ::= V2XSecData (WITH COMPONENTS {
+    content (WITH COMPONENTS {
+      ...,
+      unsecuredData (CONTAINING Tbu)
+    })
+  })
+ ScmsPdu-Scoped ::= ScmsPdu (WITH COMPONENTS {
+    ...,
+    content (CONSTRAINED BY {
+      --Pdu
+    })
+  })
+
+
+  SignedCertificateRequest ::= SEQUENCE  {
+    hashId      HashAlgorithm,
+    signer      SignerIdentifier,
+    signature   Signature
+  }
+ SignerSelf ::= SignerIdentifier(WITH COMPONENTS {
+    self
+  })
+  SignerSingleCert ::= SignerIdentifier(WITH COMPONENTS {
+    certificate (SequenceOfCertificate (SIZE (1)))
+  })
+
+
+
+
+END

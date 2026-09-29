@@ -1,0 +1,69 @@
+ ScmsSsp DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ScmsSsp ;
+IMPORTS 
+Uint8, SequenceOfAid, Uint16 FROM SecurityBaseDataTypes
+;
+ScmsSsp ::= CHOICE {
+    root     RootCaSsp,
+    ma       MaSsp,
+    pg       PgSsp,
+    ica      IcaSsp,
+    eca      EcaSsp,
+cra      CraSsp,
+    dcm      DcmSsp,
+    aca      AcaSsp,
+    la       LaSsp,
+    ra       RaSsp,
+    ee       EeSsp,
+    ...
+  }
+  RootCaSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+ MaSsp ::= SEQUENCE {
+    version        Uint8 (1),
+    relevantAids  SequenceOfAid,
+    ...
+  }
+  PgSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+  IcaSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+  EcaSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+ AcaSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+  CraSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+  DcmSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+  LaSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    laId     Uint16,
+    ...
+  }
+  RaSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+  EeSsp ::= SEQUENCE {
+    version  Uint8 (1),
+    ...
+  }
+
+
+END

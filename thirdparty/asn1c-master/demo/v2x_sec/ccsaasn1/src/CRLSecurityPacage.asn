@@ -1,0 +1,40 @@
+SecuredCrl DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+ 
+IMPORTS 
+
+  V2XSecData,
+  Opaque,
+  Aid,
+  CrlContents FROM SecurityDataTypes
+;
+
+CrlAid ::= Aid(3628)
+
+SecuredCrl ::= V2XSecData (WITH COMPONENTS {..., 
+  content (WITH COMPONENTS {
+    signedData  (WITH COMPONENTS {..., 
+      tbsData (WITH COMPONENTS {
+        payload (WITH COMPONENTS {..., 
+          data (WITH COMPONENTS {...,
+             content (WITH COMPONENTS {
+                unsecuredData (CONTAINING CrlContents)
+            })
+          })
+        }),
+        headerInfo (WITH COMPONENTS {..., 
+          aid (CrlAid),
+          generationTime ABSENT,
+          expiryTime ABSENT,
+          generationLocation ABSENT,
+          p2pcdLearningRequest ABSENT,
+          missingCrlIdentifier ABSENT,
+          encryptionKey ABSENT
+        })
+      })
+    })
+  })
+})
+
+END

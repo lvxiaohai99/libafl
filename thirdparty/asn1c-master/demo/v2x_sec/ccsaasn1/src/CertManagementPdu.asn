@@ -1,0 +1,23 @@
+ CertManagementPdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS CertManagementPdu;
+IMPORTS Uint8,Time32 FROM SecurityBaseDataTypes
+SecuredCrl FROM SecuredCrl 
+Certificate FROM SecurityDataTypes
+AcaEeCertResponseCubkSpdu,CtlSignatureSpdu FROM AcaEeCertResponseCubkSpdu
+;
+
+ CertManagementPdu ::= CHOICE {
+    compositeCrl                    CompositeCrl,
+    certificateChain                CertificateChain,
+    ...
+  }
+CompositeCrl ::= SEQUENCE {
+    crl      SEQUENCE SIZE(0..MAX) OF SecuredCrl,
+    ...
+  }
+  CertificateChain ::= SEQUENCE {
+    others     SEQUENCE SIZE(0..MAX) OF Certificate,
+    ...
+  }
+END

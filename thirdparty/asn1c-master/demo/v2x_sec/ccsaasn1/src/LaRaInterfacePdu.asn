@@ -1,0 +1,116 @@
+LaRaInterfacePdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+IMPORTS 
+    RecipientInfo FROM SecurityDataTypes
+    ScmsPdu-Scoped FROM V2XSecData-Encrypted
+    Uint8, Uint32, Uint16, HostnameLaId FROM SecurityBaseDataTypes
+V2XSecData-SignedEncrypted FROM V2XSecData-Encrypted
+;
+LaRaInterfacePdu ::= CHOICE{
+praLaLinkageValueRequest PraLaLinkageValueRequest,
+laPraLinkageValueResponse LaPraLinkageValueResponse,
+...
+}
+PraLaLinkageValueRequest ::= CHOICE{
+   individualLVRequest  PraLaIndividualLinkageValueRequest,
+   groupLVRequest PraLaGroupLinkageValueRequest
+}
+PraLaIndividualLinkageValueRequest ::= SEQUENCE {
+header              PraLaRequestHeader,
+jMax                Uint8,
+numberOfFreshInd    Uint32 OPTIONAL,
+continuationsInd    SEQUENCE OF LinkageChainId OPTIONAL
+}
+LinkageChainId ::= EncryptedData (WITH COMPONENTS {
+    recipients (SIZE (1) INTERSECTION (WITH COMPONENT (
+        RecipientInfo (WITH COMPONENTS {
+            certRecipInfo
+    })))),
+    ciphertext
+  }  
+)
+PraLaGroupLinkageValueRequest ::= SEQUENCE {
+    header              PraLaRequestHeader,
+    jMax                Uint32,
+    groupIdentifier     OCTET STRING (SIZE(4)) 
+}
+PraLaRequestHeader ::= SEQUENCE{
+iMin               Uint16,
+iMax               Uint16,
+praId	        Hostname,
+pcaId              Hostname
+}
+LaPraLinkageValueResponse ::= SEQUENCE {
+    iMin                 Uint16,
+    iMax                 Uint16,
+    individualLVs       SEQUENCE (SIZE (0..MAX)) OF  IndividualLVResponseLinkageChain,
+    groupLVs                 SEQUENCE (SIZE (0..MAX)) OF GroupLVResponseLinkageChain
+}
+IndividualLVResponseLinkageChain ::= SEQUENCE {
+    jMax                Uint8,
+values              SEQUENCE OF 
+				  SEQUENCE OF	EncryptedIndividualLV,
+    linkageChainId     LinkageChainId
+}
+GroupLVResponseLinkageChain ::= SEQUENCE {
+    jMax                Uint32,
+values             SEQUENCE OF 
+				SEQUENCE OF EncryptedGroupLV,         
+    groupIdentifier      OCTET STRING (SIZE(4))
+}
+EncryptedIndividualLV ::= SEQUENCE {
+    version         Uint8(1),
+    laId            LaId,            
+    enc-lv         EncryptedData (WITH COMPONENTS {
+      recipients (SIZE (1) INTERSECTION (WITH COMPONENT (           
+        RecipientInfo (WITH COMPONENTS {        
+            certRecipInfo 
+      })))),
+	ciphertext
+    })
+}
+EncryptedGroupLV ::= SEQUENCE {
+    version         Uint8(1),
+    laId            LaId,                                
+    enc-lv         EncryptedData (WITH COMPONENTS {
+      recipients (SIZE (1) INTERSECTION (WITH COMPONENT (           
+        RecipientInfo (WITH COMPONENTS {        
+            certRecipInfo     
+      })))),
+	ciphertext
+    })
+}
+PraLaIndividualLinkageValueRequestSpdu ::= V2XSecData-SignedEncrypted {
+    ScmsPdu-Scoped {
+      LaRaInterfacePdu (WITH COMPONENTS{
+        praLaLinkageValueRequest (WITH COMPONENTS{
+		individualLVRequest
+	})
+     })
+    }, 
+    SecurityMgmtAid
+  }
+PraLaGroupLinkageValueRequestSpdu ::= V2XSecData-SignedEncrypted {
+    ScmsPdu-Scoped {
+      LaRaInterfacePdu  (WITH COMPONENTS {
+        praLaLinkageValueRequest (WITH COMPONENTS {
+		groupLVRequest  
+	})
+      })
+    }, 
+    SecurityMgmtAid
+  }
+LaPraLinkageValueResponseSpdu ::= V2XSecData-SignedEncrypted {
+    ScmsPdu-Scoped {
+      LaRaInterfacePdu  (WITH COMPONENTS {
+        laPraLinkageValueResponse
+      })
+    }, 
+    SecurityMgmtAid
+ }
+
+
+
+
+END

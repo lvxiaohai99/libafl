@@ -1,0 +1,140 @@
+CRLBaseTypes DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+ 
+IMPORTS 
+  CrlSeries,
+  GeographicRegion,
+  HashedId8,
+  HashedId10,
+  IValue,
+  LaId,
+  LinkageSeed,
+  Opaque,
+  Aid,
+  Signature,
+  Time32,
+  Uint3,
+  Uint8,
+  Uint16, 
+  Uint32,
+  ValidityPeriod
+FROM SecurityBaseDataTypes
+
+;
+--
+--
+--  CRL contents
+--
+--
+
+CrlContents ::= SEQUENCE  {
+    version            Uint8 (1),
+    crlSeries          CrlSeries,
+    crlCraca            HashedId8,
+    issueDate          Time32,   
+    nextCrl            Time32,  
+    priorityInfo       CrlPriorityInfo,
+    typeSpecific       CHOICE  {
+      fullHashCrl          ToBeSignedHashIdCrl,            
+      deltaHashCrl         ToBeSignedHashIdCrl,            
+      fullLinkedCrl        ToBeSignedLinkageValueCrl,
+      deltaLinkedCrl       ToBeSignedLinkageValueCrl,
+      ...
+    }
+}    
+
+CrlPriorityInfo ::= SEQUENCE  {  
+    priority          Uint8 OPTIONAL,
+    ...
+}
+
+
+ToBeSignedHashIdCrl ::= SEQUENCE  {  
+    crlSerial         Uint32,
+    entries           SequenceOfHashBasedRevocationInfo,
+    ...
+}
+
+HashBasedRevocationInfo ::= SEQUENCE  {
+    id         HashedId10,
+    expiry     Time32,
+    ...
+}
+
+SequenceOfHashBasedRevocationInfo ::= 
+    SEQUENCE OF HashBasedRevocationInfo
+
+
+ToBeSignedLinkageValueCrl ::= SEQUENCE  {  
+    iRev               IValue,
+    indexWithinI       Uint8,
+    individual         SequenceOfJMaxGroup OPTIONAL,
+    groups             SequenceOfGroupCrlEntry OPTIONAL,
+    ...,
+   groupsSingleSeed   SequenceOfGroupSingleSeedCrlEntry OPTIONAL
+} 
+(WITH COMPONENTS {..., individual PRESENT} |
+ WITH COMPONENTS {..., groups PRESENT})
+
+
+JMaxGroup ::= SEQUENCE  {
+    jmax              Uint8,
+    contents          SequenceOfLAGroup,
+    ...
+}
+
+
+SequenceOfJMaxGroup ::= SEQUENCE OF JMaxGroup
+
+LAGroup ::= SEQUENCE  {
+    la1Id            LaId,
+    la2Id            LaId,
+    contents         SequenceOfIMaxGroup,
+    ... 
+}
+
+SequenceOfLAGroup ::= SEQUENCE OF LAGroup
+
+IMaxGroup ::= SEQUENCE {
+    iMax              Uint16,
+    contents          SequenceOfIndividualRevocation,
+    ...,
+    singleSeeds        SequenceOfLinkageSeed
+}
+
+SequenceOfIMaxGroup ::= SEQUENCE OF IMaxGroup
+
+IndividualRevocation ::= SEQUENCE  { 
+    linkageSeed1    LinkageSeed,
+    linkageSeed2     LinkageSeed,
+   
+    ...
+}
+
+SequenceOfIndividualRevocation ::= SEQUENCE OF IndividualRevocation
+LinkageSeed ::= OCTET STRING (SIZE(16))
+SequenceOfLinkageSeed ::= SEQUENCE OF LinkageSeed
+
+GroupCrlEntry ::= SEQUENCE  {
+    iMax             Uint16,
+    la1Id            LaId,
+    linkageSeed1     LinkageSeed,
+    la2Id            LaId,
+    linkageSeed2     LinkageSeed,
+    ...
+}
+
+SequenceOfGroupCrlEntry ::= SEQUENCE OF GroupCrlEntry
+
+---GroupSingleSeedCrlEntry
+GroupSingleSeedCrlEntry ::= SEQUENCE {
+   iMax     Uint16,
+   laid     LaId,
+   linkageSeed   LinkageSeed
+}
+
+SequenceOfGroupSingleSeedCrlEntry ::= SEQUENCE OF GroupSingleSeedCrlEntry
+
+
+END

@@ -1,0 +1,67 @@
+AcaRaInterfacePdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+IMPORTS Uint8,Time32 FROM SecurityBaseDataTypes
+	Certificate FROM SecurityDataTypes
+	V2XSecData FROM SecurityDataTypes
+	ScmsPdu FROM ScmsPdu
+V2XSecData-SymmEncryptedSingleRecipient FROM V2XSecData-Encrypted
+AcaEeCertResponsePlainSpdu,AcaEeCertResponsePrivateSpdu FROM AcaEeCertResponseCubkSpdu
+AcaEeCertResponseCubkSpdu FROM AcaEeCertResponseCubkSpdu 
+EncryptedIndividualLV FROM LaRaInterfacePdu
+
+;
+ 
+AcaRaInterfacePdu ::= CHOICE {
+    raAcaCertRequest   RaAcaCertRequest,
+    acaRaCertResponse  AcaRaCertResponse,
+    ...
+  }
+RaAcaCertRequest ::= SEQUENCE {
+    version         Uint8 (1),
+    generationTime  Time32,
+    flags           RaAcaCertRequestFlags,
+    linkageInfo     EncryptedIndividualLV OPTIONAL,
+    certEncKey      PublicEncryptionKey OPTIONAL,
+    tbsCert         ToBeSignedCertificate (WITH COMPONENTS { 
+      ...,
+      cracaId ('000000'H),
+      crlSeries (0),
+      appPermissions PRESENT,
+      certIssuePermissions ABSENT,
+      certRequestPermissions ABSENT 
+    }),
+    ...
+  }
+  RaAcaCertRequestFlags ::= BIT STRING {butterflyExplicit (0), useCubk (1)} (SIZE (8))
+  AcaRaCertResponse ::= SEQUENCE {
+    version         Uint8 (1),
+    generationTime  Time32,
+    requestHash     HashedId8,
+    acaResponse     AcaResponse,
+    ...
+  }
+  AcaResponse ::= CHOICE {
+    plain    AcaEeCertResponsePlainSpdu,
+    private  AcaEeCertResponsePrivateSpdu,
+    cubk     AcaEeCertResponseCubkSpdu,
+    ...
+  }
+  RaAcaCertRequestSpdu ::= V2XSecData-SignedCertRequest {
+    ScmsPdu-Scoped {
+      AcaRaInterfacePdu (WITH COMPONENTS {
+        raAcaCertRequest
+      })
+    }, 
+    SignerSingleCert
+  }
+  AcaRaCertResponseSpdu ::= V2XSecData-Signed {
+    ScmsPdu-Scoped {
+      AcaRaInterfacePdu (WITH COMPONENTS {
+        acaRaCertResponse
+      })
+    }, 
+    SecurityMgmtAid
+  }
+
+END

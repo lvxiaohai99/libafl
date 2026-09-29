@@ -1,0 +1,40 @@
+ScmsPdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+ 
+IMPORTS 
+AcaEeInterfacePdu FROM AcaEeInterfacePdu 
+CertManagementPdu FROM CertManagementPdu
+EcaEeInterfacePdu FROM EcaEeInterfacePdu
+AcaRaInterfacePdu FROM AcaRaInterfacePdu 
+EeRaInterfacePdu FROM EeRaInterfacePdu
+LaMaInterfacePdu FROM LaMaInterfacePdu 
+LaRaInterfacePdu FROM LaRaInterfacePdu
+  Uint8 FROM SecurityBaseDataTypes
+;
+
+
+ ScmsPdu ::= SEQUENCE {
+    version  Uint8 (1),
+    content  CHOICE {
+      aca-ee  AcaEeInterfacePdu,
+      aca-la  AcaLaInterfacePdu,
+      aca-ma  AcaMaInterfacePdu,
+      aca-ra  AcaRaInterfacePdu,
+      cert    CertManagementPdu,
+      eca-ee  EcaEeInterfacePdu,
+      ee-ma   EeMaInterfacePdu,
+      ee-ra   EeRaInterfacePdu,
+      la-ma   LaMaInterfacePdu,
+      la-ra   LaRaInterfacePdu,
+      ma-ra   MaRaInterfacePdu,
+      ...
+    }
+  }
+AcaLaInterfacePdu ::= NULL
+AcaMaInterfacePdu ::= NULL
+MaRaInterfacePdu ::= NULL
+EeMaInterfacePdu ::= NULL
+
+
+END

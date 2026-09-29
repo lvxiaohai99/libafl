@@ -1,0 +1,127 @@
+AcaEeCertResponseCubkSpdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+IMPORTS Uint8,Time32 FROM SecurityBaseDataTypes
+	Certificate,Aid FROM SecurityDataTypes
+	V2XSecData FROM SecurityDataTypes
+	ScmsPdu FROM ScmsPdu
+V2XSecData-Encrypted,V2XSecData-Unsecured,V2XSecData-EncryptedSigned FROM V2XSecData-Encrypted
+;
+
+
+  AcaEeCertResponseCubkSpdu ::= V2XSecData-Encrypted {
+    ScmsPdu-Scoped {
+      AcaEeInterfacePdu (WITH COMPONENTS {
+        acaEeCertResponse
+      })
+    }
+  }
+  AcaEeCertResponsePlainSpdu ::= V2XSecData-Unsecured {
+    ScmsPdu-Scoped {
+      AcaEeInterfacePdu (WITH COMPONENTS {
+        acaEeCertResponse
+      })
+    }
+  }
+ AcaEeCertResponsePrivateSpdu ::= V2XSecData-EncryptedSigned {
+    ScmsPdu-Scoped {
+      AcaEeInterfacePdu (WITH COMPONENTS {
+        acaEeCertResponse
+      })
+    }, 
+    SecurityMgmtAid
+  }
+ CertificateChainSpdu ::= V2XSecData-Unsecured {
+    ScmsPdu-Scoped {
+      CertManagementPdu (WITH COMPONENTS {
+        certificateChain
+      })
+    }
+  }
+  CompositeCrlSpdu ::= V2XSecData-Unsecured {
+    ScmsPdu-Scoped {
+      CertManagementPdu (WITH COMPONENTS {
+        compositeCrl
+      })
+    }
+  }
+  EcaEeCertResponseSpdu ::= V2XSecData-Signed {
+    ScmsPdu-Scoped {
+      EcaEeInterfacePdu (WITH COMPONENTS {
+        ecaEeCertResponse
+      })
+    }, 
+    SecurityMgmtAid
+  }
+ EeEcaCertRequestSpdu ::= V2XSecData-SignedCertRequest {
+    ScmsPdu-Scoped {
+      EcaEeInterfacePdu (WITH COMPONENTS {
+        eeEcaCertRequest
+      })
+    }, 
+    SignerSelf
+  }
+ EeRaCertRequestPlainSpdu ::= V2XSecData-Unsecured {
+    ScmsPdu-Scoped {
+      EeRaInterfacePdu (WITH COMPONENTS {
+        eeRaCertRequest
+      })
+    }
+  }
+  EeRaCertRequestSpdu ::= V2XSecData-SignedEncryptedCertRequest {
+    ScmsPdu-Scoped {
+      EeRaInterfacePdu (WITH COMPONENTS {
+        eeRaCertRequest
+      })
+    }, 
+    SignerSingleCert
+  }
+ EeRaDownloadRequestPlainSpdu ::= V2XSecData-Unsecured {
+    ScmsPdu-Scoped {
+      EeRaInterfacePdu (WITH COMPONENTS {
+        eeRaDownloadRequest
+      })
+    }
+  }
+ EeRaDownloadRequestSpdu ::= V2XSecData-SignedEncrypted {
+    ScmsPdu-Scoped {
+      EeRaInterfacePdu (WITH COMPONENTS {
+        eeRaDownloadRequest
+      })
+    }, 
+    SecurityMgmtAid
+  }
+EeRaSuccessorEnrollmentCertRequestSpdu ::=
+    V2XSecData-SignedEncryptedCertRequest { ScmsPdu-Scoped {
+      EeRaInterfacePdu (WITH COMPONENTS {
+        eeRaSuccessorEnrollmentCertRequest
+      })
+    }, 
+    SignerSingleCert
+  }
+RaEeCertAckSpdu ::= V2XSecData-Signed {
+    ScmsPdu-Scoped {
+      EeRaInterfacePdu (WITH COMPONENTS {
+        raEeCertAck
+      })
+    }, 
+    SecurityMgmtAid
+  }
+ RaEeCertInfoSpdu ::= V2XSecData-Unsecured {
+    ScmsPdu-Scoped {
+      EeRaInterfacePdu (WITH COMPONENTS {
+        raEeCertInfo
+      })
+    }
+  }
+ RaEeEnrollmentCertAckSpdu ::= V2XSecData-Signed {
+    ScmsPdu-Scoped {
+      EeRaInterfacePdu (WITH COMPONENTS {
+        raEeCertInfo
+      })
+    }, 
+    SecurityMgmtAid
+  }
+SecurityMgmtAid ::= Aid (3627)
+
+END

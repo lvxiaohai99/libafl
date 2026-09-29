@@ -1,0 +1,80 @@
+ EeRaInterfacePdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS EeRaInterfacePdu;
+IMPORTS Uint8,Time32 FROM SecurityBaseDataTypes
+Certificate FROM SecurityDataTypes
+EeEcaCertRequestSpdu FROM AcaEeCertResponseCubkSpdu
+;
+ 
+ EeRaInterfacePdu ::= CHOICE {
+    eeRaCertRequest                     EeRaCertRequest,
+    raEeCertAck                         RaEeCertAck,
+    raEeCertInfo                        RaEeCertInfo,
+    eeRaDownloadRequest                 EeRaDownloadRequest,
+    eeRaSuccessorEnrollmentCertRequest  EeEcaCertRequestSpdu,
+    ...
+  }
+EeRaCertRequest ::= SEQUENCE {
+    version           Uint8 (1),
+    generationTime    Time32,
+    type              CertificateType,
+    tbsCert           ToBeSignedCertificate (WITH COMPONENTS { 
+      ...,
+      cracaId ('000000'H),
+      crlSeries (0),
+      appPermissions PRESENT,
+      certIssuePermissions ABSENT,
+      certRequestPermissions ABSENT,
+      verifyKeyIndicator (WITH COMPONENTS {
+        verificationKey
+      })
+    }),
+    additionalParams  AdditionalParams OPTIONAL,
+    ...,
+aaaAuthorizationInfoList SequenceOfAaaAuthorizationInfo OPTIONAL
+}
+ AdditionalParams ::= CHOICE {
+    original        ButterflyParamsOriginal,
+    unified         ButterflyExpansion,  
+    compactUnified  ButterflyExpansion,
+    encryptionKey   PublicEncryptionKey,
+    ...
+  }
+ ButterflyParamsOriginal ::= SEQUENCE {
+    signingExpansion     ButterflyExpansion,
+    encryptionKey        PublicEncryptionKey,
+    encryptionExpansion  ButterflyExpansion
+  }
+ButterflyExpansion ::= CHOICE {
+    aes128      OCTET STRING (SIZE(16)),
+    ...,
+    sm4         OCTET STRING(SIZE(16))
+  }
+  RaEeCertInfo ::= SEQUENCE {
+    version         Uint8 (1),
+    generationTime  Time32,
+    currentI        IValue,
+    requestHash     HashedId8,
+    nextDlTime      Time32,
+    ...
+  }
+ EeRaDownloadRequest ::= SEQUENCE {
+    generationTime  Time32,
+    filename        UTF8String (SIZE (0..255)),
+    ...
+  }
+ AaaAuthorizationInfo ::= SEQUENCE {
+    aaaAuthorizationInfo	Opaque,
+    aaaUrl			UTF8String (SIZE (0..511)) OPTIONAL
+  }
+SequenceOfAaaAuthorizationInfo ::= SEQUENCE OF AaaAuthorizationInfo
+  RaEeCertAck ::= SEQUENCE {
+    version         Uint8 (1),
+    generationTime  Time32,
+    requestHash     HashedId8,
+    nextDlTime      Time32,
+    ...
+  }
+
+
+END

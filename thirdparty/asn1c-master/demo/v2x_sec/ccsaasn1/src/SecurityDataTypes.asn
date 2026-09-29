@@ -1,0 +1,309 @@
+--******************************************************************************
+-- 
+-- LTE-V2X Security Data Types 
+-- 
+--******************************************************************************
+
+SecurityDataTypes DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+ 
+EXPORTS ALL;
+
+IMPORTS 
+  CrlSeries,
+  EccP256CurvePoint,
+  EciesP256EncryptedKey,
+  EcencP256EncryptedKey,
+  EncryptionKey,
+  GeographicRegion,
+  GroupLinkageValue,
+  HashAlgorithm,
+  HashedId3,
+  HashedId8,
+  HashedId32,
+  Hostname,
+  IValue,
+  LinkageValue,
+  Opaque,
+  Aid,
+  AidSsp,
+  AidSspRange,
+  PublicEncryptionKey,
+  PublicVerificationKey,
+  SequenceOfHashedId3,
+  SequenceOfAidSsp,
+  SequenceOfAidSspRange,
+  ServiceSpecificPermissions,
+  Signature,
+  SubjectAssurance,
+  SymmetricEncryptionKey,
+  ThreeDLocation,
+  Time64,
+  Uint3,
+  Uint8,
+  Uint16, 
+  Uint32,
+  ValidityPeriod FROM SecurityBaseDataTypes
+
+;
+-- 
+--********************************************************************* 
+-- 
+--  Structures for describing secured data
+-- 
+--*********************************************************************  
+
+-- this structure belongs later in the file but putting it here avoids
+-- compiler errors with certain tools
+SignedDataPayload ::= SEQUENCE  { 
+    data              V2XSecData OPTIONAL,
+    extDataHash       HashedData OPTIONAL,
+    ...
+}
+    (WITH COMPONENTS {..., data PRESENT} |
+     WITH COMPONENTS {..., extDataHash PRESENT})
+
+V2XSecData ::= SEQUENCE  {
+    protocolVersion    Uint8(3),
+    content            V2XSecContent
+}
+
+V2XSecContent ::=  CHOICE  { 
+    unsecuredData            Opaque, 
+    signedData               SignedData,
+    encryptedData            EncryptedData,
+    signedCertificateRequest Opaque,
+    ...
+}
+
+SignedData ::= SEQUENCE  { 
+    hashId          HashAlgorithm,
+    tbsData         ToBeSignedData,
+    signer          SignerIdentifier,
+    signature       Signature
+}
+
+
+SignerIdentifier ::= CHOICE  { 
+    digest          HashedId8,
+    certificate     SequenceOfCertificate,
+    self            NULL,
+    ...,
+    x509           OCTET STRING
+}
+
+ToBeSignedData ::= SEQUENCE  { 
+    payload         SignedDataPayload,
+    headerInfo      HeaderInfo
+}
+
+HashedData::= CHOICE  { 
+    sha256HashedData  OCTET STRING (SIZE(32)),
+...,
+sha384HashedData  OCTET STRING (SIZE(48)),
+sm3HashedData  OCTET STRING (SIZE(32))
+}
+
+HeaderInfo ::= SEQUENCE  { 
+    aid                   Aid,
+    generationTime         Time64 OPTIONAL,
+    expiryTime             Time64  OPTIONAL,
+    generationLocation     ThreeDLocation OPTIONAL,
+    p2pcdLearningRequest   HashedId3 OPTIONAL,
+    missingCrlIdentifier   MissingCrlIdentifier OPTIONAL,
+    encryptionKey          EncryptionKey OPTIONAL,
+    ...,
+    inlineP2pcdRequest     SequenceOfHashedId3 OPTIONAL,
+    requestedCertificate   Certificate OPTIONAL,
+    pduFunctionalType      PduFunctionalType OPTIONAL
+}
+
+MissingCrlIdentifier ::= SEQUENCE  {
+    cracaId         HashedId3,
+    crlSeries       CrlSeries,
+    ...
+}
+
+PduFunctionalType ::= INTEGER (0..255)
+  tlsHandshake           PduFunctionalType ::= 1
+  iso21177ExtendedAuth   PduFunctionalType ::= 2
+
+
+Countersignature ::= V2XSecData (WITH COMPONENTS {...,
+  content (WITH COMPONENTS {..., 
+    signedData  (WITH COMPONENTS {..., 
+      tbsData (WITH COMPONENTS {..., 
+        payload (WITH COMPONENTS {..., 
+          data ABSENT,
+          extDataHash PRESENT
+        }),
+        headerInfo(WITH COMPONENTS {..., 
+          generationTime PRESENT,
+          expiryTime ABSENT,
+          generationLocation ABSENT,
+          p2pcdLearningRequest ABSENT,
+          missingCrlIdentifier ABSENT,
+          encryptionKey ABSENT
+        })
+      })
+    })
+  })
+})
+
+--********************************************************************** 
+-- 
+--  Structures for describing encrypted data
+-- 
+--**********************************************************************  
+
+EncryptedData ::= SEQUENCE  {
+    recipients     SequenceOfRecipientInfo,
+    ciphertext     SymmetricCiphertext
+}
+RecipientInfo ::= CHOICE  {
+    pskRecipInfo        PreSharedKeyRecipientInfo,
+    symmRecipInfo       SymmRecipientInfo,
+    certRecipInfo       PKRecipientInfo, 
+    signedDataRecipInfo PKRecipientInfo, 
+    rekRecipInfo        PKRecipientInfo 
+}
+
+SequenceOfRecipientInfo ::= SEQUENCE OF RecipientInfo
+       
+PreSharedKeyRecipientInfo ::= HashedId8
+SymmRecipientInfo ::= SEQUENCE  { 
+    recipientId        HashedId8, 
+    encKey             SymmetricCiphertext
+}
+
+PKRecipientInfo ::= SEQUENCE  { 
+    recipientId        HashedId8, 
+    encKey             EncryptedDataEncryptionKey
+}
+
+EncryptedDataEncryptionKey ::= CHOICE  { 
+    eciesNistP256          EciesP256EncryptedKey,
+    eciesBrainpoolP256r1   EciesP256EncryptedKey,
+...,
+    ecencSm2             EcencP256EncryptedKey
+}
+
+  SymmetricCiphertext ::= CHOICE  {
+      aes128ccm           One28BitCcmCiphertext,
+      ...,
+      sm4Ccm              One28BitCcmCiphertext
+  }
+
+  One28BitCcmCiphertext ::= SEQUENCE  {
+      nonce           OCTET STRING (SIZE (12)),
+      ccmCiphertext   Opaque 
+  }
+
+--********************************************************************** 
+-- 
+--  Certificates and other security management data structures
+-- 
+--********************************************************************** 
+
+-- Certificates is explicit (type = explicit,
+-- toBeSigned includes verification key, signature present) or Reserved £¨Reserved for impilict cert£©.
+
+Certificate ::= CertificateBase (ExplicitCertificate | Reserved)
+
+SequenceOfCertificate ::= SEQUENCE OF Certificate
+
+CertificateBase ::= SEQUENCE  {
+    version                 Uint8(3),
+    type                    CertificateType,
+    issuer                  IssuerIdentifier,
+    toBeSigned              ToBeSignedCertificate,
+    signature               Signature OPTIONAL
+}
+  
+CertificateType  ::= ENUMERATED  {
+    explicit,
+    reserved,
+...
+}
+
+
+ExplicitCertificate ::= CertificateBase (WITH COMPONENTS {...,
+    type(explicit),
+    toBeSigned(WITH COMPONENTS {..., 
+        verifyKeyIndicator(WITH COMPONENTS {verificationKey})
+    }), 
+    signature PRESENT
+    })
+
+Reserved ::= CertificateBase (WITH COMPONENTS {...,
+    type(reserved),
+    toBeSigned(WITH COMPONENTS {..., 
+      verifyKeyIndicator(WITH COMPONENTS {reconstructionValue})
+    }), 
+    signature ABSENT
+    })
+
+IssuerIdentifier ::= CHOICE  { 
+    sha256AndDigest         HashedId8,
+    self                    HashAlgorithm,
+    ...,
+    sha384AndDigest         HashedId8,
+      sm3AndDigest            HashedId8
+
+}
+
+ToBeSignedCertificate ::= SEQUENCE  { 
+    id                     CertificateId,
+    cracaId                HashedId3,
+    crlSeries              CrlSeries,
+    validityPeriod         ValidityPeriod,
+    region                 GeographicRegion OPTIONAL,
+    assuranceLevel         SubjectAssurance OPTIONAL,
+    appPermissions         SequenceOfAidSsp OPTIONAL,
+    certIssuePermissions   SequenceOfAidGroupPermissions OPTIONAL,
+    certRequestPermissions SequenceOfAidGroupPermissions OPTIONAL, 
+    canRequestRollover     NULL OPTIONAL,
+    encryptionKey          PublicEncryptionKey OPTIONAL,
+    verifyKeyIndicator     VerificationKeyIndicator,
+    ...
+}
+(WITH COMPONENTS { ..., appPermissions PRESENT} |
+ WITH COMPONENTS { ..., certIssuePermissions PRESENT} |
+ WITH COMPONENTS { ..., certRequestPermissions PRESENT})
+
+CertificateId ::= CHOICE  {
+    linkageData             LinkageData,
+    name                    Hostname,
+    binaryId                OCTET STRING(SIZE(1..64)),
+    none                    NULL,
+    ...
+}
+
+LinkageData ::= SEQUENCE  {
+    iCert                 IValue,
+    linkage-value         LinkageValue, 
+    group-linkage-value   GroupLinkageValue OPTIONAL
+}
+         
+EndEntityType ::= BIT STRING {app (0), enroll (1) } (SIZE (8)) (ALL EXCEPT {})
+
+AidGroupPermissions ::= SEQUENCE  {
+    subjectPermissions SubjectPermissions,
+    minChainLength     INTEGER DEFAULT 1,
+    chainLengthRange   INTEGER DEFAULT 0, 
+    eeType             EndEntityType DEFAULT {app}
+}
+
+SequenceOfAidGroupPermissions ::= SEQUENCE OF AidGroupPermissions
+SubjectPermissions ::= CHOICE  {
+    explicit        SequenceOfAidSspRange,
+    all             NULL,
+    ...
+}
+
+VerificationKeyIndicator ::= CHOICE  {
+    verificationKey         PublicVerificationKey,
+    reconstructionValue     EccP256CurvePoint,
+    ...
+}
+  
+END

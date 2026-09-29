@@ -1,0 +1,65 @@
+ LaMaInterfacePdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS LaMaInterfacePdu ;
+IMPORTS 
+IValue, Uint32, LinkageValue, HashedId8, LaId, Uint32, LinkageSeed FROM SecurityBaseDataTypes
+V2XSecData-SignedEncrypted FROM V2XSecData-Encrypted
+
+;
+ 
+
+
+LaMaInterfacePdu ::= CHOICE{
+maLaLinkageSeedRequest MaLaLinkageSeedRequest,
+laMaLinkageSeedResponse LaMaLinkageSeedResponse,
+...
+}
+MaLaLinkageSeedRequest ::= SEQUENCE{
+maId     	         OCTET STRING (SIZE(0..255)),
+individualLVs       SEQUENCE (SIZE(0..MAX)) OF IndividualLV,
+groupLVs            SEQUENCE (SIZE(0..MAX)) OF GroupLV
+ }
+IndividualLV ::= SEQUENCE {
+    iValue     IValue,
+    lv         LinkageValue
+}
+GroupLV::= SEQUENCE {
+    iValue     IValue,
+    j          Uint32,
+    lv         LinkageValue 
+}
+LaMaLinkageSeedResponse ::= SEQUENCE{
+    requestHash            HashedId8,
+    laId                   LaId,
+    individualLSInfos      SEQUENCE(SIZE(0..MAX)) OF IndividualLSInfo,
+    groupLSInfos           SEQUENCE(SIZE(0..MAX)) OF GroupLSInfo
+}
+IndividualLSInfo ::= SEQUENCE {
+      i    IValue,
+      lv   LinkageValue,
+      ls   LinkageSeed
+}
+GroupLSInfo ::= SEQUENCE {
+      i     IValue, 
+      j     Uint32,
+      lv    LinkageValue,
+      ls    LinkageSeed 
+}
+MaLaLinkageSeedRequestSpdu ::= V2XSecData-SignedEncrypted {
+ ScmsPdu-Scoped {
+      LaMaInterfacePdu (WITH COMPONENTS {
+        	maLaLinkageSeedRequest
+      })
+    }, 
+    SecurityMgmtAid
+}
+LaMaLinkageSeedResponseSpdu ::= V2XSecData-SignedEncrypted {
+ ScmsPdu-Scoped {
+      LaMaInterfacePdu (WITH COMPONENTS {
+        	laMaLinkageSeedResponse
+      })
+    }, 
+    SecurityMgmtAid
+  }
+
+END

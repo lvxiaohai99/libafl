@@ -1,0 +1,45 @@
+CTL DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+IMPORTS   Uint8,HashedId,Time32 FROM SecurityBaseDataTypes
+Certificate, IssuerIdentifier,SequenceOfCertificate, Signature
+ FROM SecurityDataTypes
+;
+  RootCtl ::= SEQUENCE {
+    toBeSignedRootCtl	ToBeSignedRootCtl,
+    signature		Signature
+  }
+ToBeSignedRootCtl ::= SEQUENCE  {
+    version          	Uint8 (1),
+    issuer           	IssuerIdentifier,
+    series           	Uint16,
+    issueDate        	Time32,
+    nextRootCtl	Time32,
+pkiCtlInfoList	SequenceOfPkiCtlInfo
+}
+PkiCtlInfo ::= SEQUENCE  {
+rootCertificate	Certificate,
+caListUrl		UTF8String (SIZE (0..511)) OPTIONAL
+}
+SequenceOfPkiCtlInfo ::= SEQUENCE OF PkiCtlInfo
+ PkiCtl ::= SEQUENCE {
+    toBeSignedPkiCtl		ToBeSignedPkiCtl,
+    signature		Signature
+  }
+ToBeSignedPkiCtl ::= SEQUENCE  {
+    version          	Uint8 (1),
+    issuer           	IssuerIdentifier,
+    series           	Uint16,
+    issueDate        	Time32,
+    nextPkiCtl		Time32,
+pkiCertInfoList	SequenceOfPkiCertInfo
+}
+PkiCertInfo ::= SEQUENCE  {
+certificate	SequenceOfCertificate,
+crlUrl		UTF8String (SIZE (0..511)) OPTIONAL,
+maUrl		UTF8String (SIZE (0..511)) OPTIONAL
+}
+SequenceOfPkiCertInfo ::= SEQUENCE OF PkiCertInfo
+
+END
+

@@ -1,0 +1,23 @@
+CrlSsp DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS ALL;
+ 
+IMPORTS 
+  CrlSeries,
+  Uint8 FROM SecurityBaseDataTypes
+;
+
+
+CrlSsp::= SEQUENCE  {
+    version         Uint8(1),
+    associatedCraca CracaType,
+    crls            PermissibleCrls,
+    ...
+}
+
+CracaType ::= ENUMERATED {isCraca, issuerIsCraca}
+      
+PermissibleCrls ::= SEQUENCE OF CrlSeries
+
+
+END

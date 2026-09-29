@@ -1,0 +1,45 @@
+ EcaEeInterfacePdu DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+
+EXPORTS EcaEeInterfacePdu;
+IMPORTS Uint8,Time32 FROM SecurityBaseDataTypes
+Certificate FROM SecurityDataTypes
+
+;
+ 
+  EcaEeInterfacePdu::= CHOICE {
+    eeEcaCertRequest   EeEcaCertRequest,
+    ecaEeCertResponse  EcaEeCertResponse,
+    ...
+  }EeEcaCertRequest ::= SEQUENCE {
+    version         Uint8 (1),
+    generationTime  Time32,
+    type            CertificateType,
+    tbsCert         ToBeSignedCertificate (WITH COMPONENTS {
+      ...,
+      id (WITH COMPONENTS {
+        ..., 
+        linkageData ABSENT
+      }),
+      cracaId ('000000'H),
+      crlSeries (0),
+      appPermissions ABSENT,
+      certIssuePermissions ABSENT,
+      certRequestPermissions PRESENT,
+      verifyKeyIndicator  (WITH COMPONENTS {
+        verificationKey
+      })
+    }),
+    canonicalId     IA5String OPTIONAL,
+    ...
+  }
+
+ EcaEeCertResponse ::= SEQUENCE {
+    version         Uint8 (1),
+    requestHash     HashedId8,
+    ecaCertChain    SequenceOfCertificate,
+    certificate     Certificate,
+    privateKeyInfo  OCTET STRING (SIZE(32)) OPTIONAL,
+    ...
+  }
+
+END

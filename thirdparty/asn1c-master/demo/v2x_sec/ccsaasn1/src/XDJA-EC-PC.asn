@@ -1,0 +1,28 @@
+CCSA DEFINITIONS AUTOMATIC TAGS ::= BEGIN 
+ 
+EXPORTS ALL;
+IMPORTS
+    EeEcaCertRequestSpdu FROM AcaEeCertResponseCubkSpdu
+    RaEeCertAckSpdu FROM AcaEeCertResponseCubkSpdu
+    SecurityMgmtAid FROM AcaEeCertResponseCubkSpdu
+    V2XSecData-SignedEncrypted FROM V2XSecData-Encrypted
+    V2XSecData-Encrypted FROM V2XSecData-Encrypted
+;
+
+--EC??
+EeEcaCertRequestEncSpdu ::= V2XSecData-SignedEncrypted {
+    EeEcaCertRequestSpdu, 
+    SecurityMgmtAid
+}
+
+--EC????
+EcaEeCertResponseEncSpdu ::= V2XSecData-Encrypted {
+    EeEcaCertRequestSpdu
+}
+
+--PC????
+RaEeCertAckEncSpdu ::= V2XSecData-Encrypted {
+    RaEeCertAckSpdu
+}
+
+END

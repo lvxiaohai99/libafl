@@ -42,6 +42,7 @@ add_executable(afl_asn1_codec_demo
 )
 target_include_directories(afl_asn1_codec_demo PRIVATE
     "${AFL_SRC_ROOT}"          # → #include "afl/asn1/Asn1Cpp.h"
+    "${AFL_SRC_ROOT}/thirdparty"   # → #include "nlohmann/json.hpp"（Asn1Json 输入解析）
     "${AFL_ASN_OUT}"
     "${AFL_LIBASN1C}"
 )

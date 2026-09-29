@@ -51,45 +51,53 @@ cd demo
 
 | 消息 | 覆盖点 |
 |------|--------|
-| BSM | 基础 SEQUENCE、OPTIONAL 有/无 |
+| BSM | 基础 SEQUENCE、OPTIONAL 有/无、可扩展变长 BIT STRING（safetyExt.events） |
 | RSM | `SEQUENCE OF` 列表、多 OPTIONAL 混用、PositionOffset CHOICE |
 | SPAT | 嵌套列表、BIT STRING、TimeChangeDetails CHOICE |
 | MAP | NodeList、name/region/elevation OPTIONAL 混用 |
 | RSI | RTE/RTS 双列表、Description CHOICE、ReferenceLanes BIT STRING |
 | 列表所有权 | 装满 16 条 RTS → `clear()` → 复用头部再装、`remove`/`pick`+`freeElement`、`resetField`/`freeField` |
+| JSON 错误输入 | 非法 JSON、未知成员、缺必选成员、枚举名错、类型不符、整数越界、CHOICE 多分支都被拒绝并给出路径 |
 
 用 `valgrind --leak-check=full build/bin/afl_asn1_codec_demo` 可验证 0 泄漏（分配次数 = 释放次数）。
 
 ```bash
 cd demo/codec_demo
 ./run.sh                              # 经 libafl CMake 编译（写入 compile_commands，可 IDE 跳转）
-./run.sh encode-sample -o samples     # 写 .uper / .xml / .hex
+./run.sh encode-sample -o samples     # 写 .uper / .xml / .hex / .json
 ./run.sh decode --uper samples/rsi.uper
 ./run.sh decode --xer  samples/rsi.xml
+./run.sh decode --json samples/rsi.json    # JSON 输入 → 结构 → 重新 UPER 编码并打印 hex
 ./run.sh decode --hex  "00 00 E8 88 ..."   # 也接受 0000E888…、0x00,0x00,…、00:00:…
 ./run.sh decode --hex-file samples/rsi.hex
 ./run.sh decode --hex-file samples/rsi.hex --format json   # JSON 显示；both = asn_print + JSON
 ./run.sh --clean
 ```
 
-JSON 规则（`afl/asn1/Asn1Json.h`，asn1c 0.9.29 无 JER，按类型描述符自行输出，仅用于显示）：
+JSON 规则（`afl/asn1/Asn1Json.h`；asn1c 0.9.29 没有 JER，这里按类型描述符实现，格式对齐 JER / X.697，**可双向**：`toJson` 输出，`fromJson` 读回，读回后 UPER 字节与原来一致）：
 
 | ASN.1 类型 | JSON |
 |------------|------|
 | SEQUENCE / SET | 对象；未填的 OPTIONAL 不出现 |
 | CHOICE | `{"分支名": 值}`，如顶层 `{"bsmFrame": {...}}` |
+| 开放类型（`&Type`） | 直接写内层值；读回时按同级 id 字段（`type_selector`）选类型 |
 | SEQUENCE OF | 数组 |
 | INTEGER（native） | 数字 |
-| ENUMERATED | 枚举名，如 `"forwardGears"` |
+| ENUMERATED | 枚举名，如 `"forwardGears"`（输入也接受数字） |
 | BOOLEAN / NULL | `true`/`false` / `null` |
 | IA5String / UTF8String 等 | 字符串 |
 | OCTET STRING | 大写 hex，如 `"id": "44454D4F30303031"` |
-| BIT STRING | 01 串，如 `"referenceLanes": "0110000000000000"` |
-| 其它（大整数、REAL 等） | asn1c 打印文本，可解析为数字时输出数字 |
+| 定长 BIT STRING（`SIZE(n)`，不可扩展） | hex，如 `"referenceLanes": "6000"`（16 位） |
+| 变长 / 可扩展 BIT STRING | `{"value": hex, "length": 位数}`，如 `"events": {"value": "A000", "length": 13}` |
+| 其它（大整数、REAL 等） | 仅输出：asn1c 打印文本；不支持读回 |
+
+JSON 输入校验：未知成员、缺必选成员、类型不符、整数超出 C 类型范围、枚举名不存在都会失败，错误信息带路径，如
+`rsiFrame.rtss[0].referenceLinks[0].referenceLanes: expected hex string`。失败时目标对象保持原样。
+`fromJson` 只保证「能装进结构」，业务取值范围（如 `rtsId 0..255`）由 `check()` / 编码时检查。
 
 程序本体在 `obu/libafl/build/bin/afl_asn1_codec_demo`；`codec_demo/build/asn1_codec_demo` 是 `run.sh` 维护的软链接，始终指向最新构建。`-h` 里看不到 `--hex` / `--format` 说明运行的是旧程序，重新执行 `./run.sh` 即可。
 
-输出约定：每次编码、解码后都打印 `asn_print`（`asn_fprint`）完整结构；UPER 编码后与 UPER/hex 输入解码前打印 hex 字节（每行 16 字节）。roundtrip 对每类消息依次验证 UPER 文件、XER 文件、UPER hex 三条解码路径。hex 文本非法（奇数位、非 hex 字符）或解码失败时返回码为 1。
+输出约定：每次编码、解码后都打印 `asn_print`（`asn_fprint`）完整结构；UPER 编码后与 UPER/hex 输入解码前打印 hex 字节（每行 16 字节）。roundtrip 对每类消息依次验证 UPER 文件、XER 文件、UPER hex、JSON 文件四条解码路径，每条都要求重新编码后 UPER 字节完全一致。hex 文本非法（奇数位、非 hex 字符）或解码失败时返回码为 1。
 
 IDE 跳转：`codec_demo` 已挂到 libafl 主 CMake；在 `obu/libafl` 下执行过 `./build.sh`（或 `./run.sh`）后，点击 `afl::asn1::Asn1List` / `Asn1Cpp.h` 即可转到定义。若无效，重载 clangd 窗口。
 
@@ -110,6 +118,10 @@ std::cout << mf.dump();                          // asn_fprint 完整结构（�
 std::cout << mf.toJson();                        // JSON（缩进 2）；toJson(0) 单行，适合写日志
 std::string hex = mf.encodeHex<afl::asn1::B_UPER>(); // "00 00 E8 88 ..."
 mf.decodeHex<afl::asn1::B_UPER>(hex);            // 格式同 afl::str::parseHexBytes
+
+std::string err;
+if (!mf.fromJson(jsonText, &err))                // 或 mf.fromJsonFile("a.json", &err)
+    std::cerr << err << std::endl;               // 失败时 mf 不变
 ```
 
 ### 内存释放规则

@@ -286,10 +286,35 @@ public:
         return out;
     }
 
-    /** JSON 文本（仅显示用，规则见 Asn1Json.h）；indent=0 输出单行 */
+    /** JSON 文本（JER 基本映射，规则见 Asn1Json.h）；indent=0 输出单行 */
     std::string toJson(int indent = 2) const
     {
         return afl::asn1::toJson(getDescriptor(), this->get(), indent);
+    }
+
+    /** 从 JSON 构造；失败时保持原对象不变，err 给出带字段路径的原因。之后建议 check() 校验约束 */
+    bool fromJson(const std::string& text, std::string* err = 0)
+    {
+        T* m = 0;
+        if (!afl::asn1::fromJson(getDescriptor(), text, reinterpret_cast<void**>(&m), err)) {
+            return false;
+        }
+        this->reset(m, &Asn1Ptr::deleter);
+        return true;
+    }
+
+    bool fromJsonFile(const std::string& path, std::string* err = 0)
+    {
+        std::ifstream ifs(path.c_str(), std::ios::binary);
+        if (!ifs) {
+            if (err) {
+                *err = "cannot open " + path;
+            }
+            return false;
+        }
+        const std::string text((std::istreambuf_iterator<char>(ifs)),
+                               std::istreambuf_iterator<char>());
+        return fromJson(text, err);
     }
 
     /** 编码并转成 hex 文本（如 "30 0A ..."）；bytesPerLine=0 不换行 */

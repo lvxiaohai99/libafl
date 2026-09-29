@@ -28,7 +28,7 @@ libafl/
 │   ├── process/          # Daemonize、ProcessUtil、SingletonProgram
 │   ├── net/              # EventLoop、Tcp*、http/、websocket/、SslHelper
 │   └── framework/        # Module、ModuleManager …          (afl::fw)
-│   └── asn1/             # Asn1Cpp（asn1c RAII）+ Asn1Json（结构转 JSON），头文件，需配合 asn1c 生成代码
+│   └── asn1/             # Asn1Cpp（asn1c RAII）+ Asn1Json（结构 ↔ JSON，对齐 JER），头文件，需配合 asn1c 生成代码
 ├── examples/             # 综合示例（demo_app）
 ├── thirdparty/           # spdlog / nlohmann / googletest / asn1c（见各目录 README）
 ├── test/                 # gtest
@@ -350,7 +350,7 @@ cd codec_demo && ./run.sh  # C++ UPER/XER 编解码（用 afl/asn1/Asn1Cpp.h）
 # 详细用法见 thirdparty/asn1c-master/README.zh.md
 ```
 
-头文件 `afl/asn1/Asn1Cpp.h`：对 asn1c 生成类型做 RAII（`encode`/`decode`/`encodeToFile`/`decodeFromFile`/`encodeHex`/`decodeHex`、`dump()` 打印完整结构、`toJson()` 输出 JSON），支持 UPER、XER、BER、OER。JSON 由 `afl/asn1/Asn1Json.h` 按类型描述符生成，仅用于显示，不能反向解码。
+头文件 `afl/asn1/Asn1Cpp.h`：对 asn1c 生成类型做 RAII（`encode`/`decode`/`encodeToFile`/`decodeFromFile`/`encodeHex`/`decodeHex`、`dump()` 打印完整结构、`toJson()` / `fromJson()` / `fromJsonFile()` 双向 JSON），支持 UPER、XER、BER、OER。JSON 由 `afl/asn1/Asn1Json.h` 按类型描述符生成和解析，格式对齐 JER（BIT STRING、开放类型等规则见 demo README），与具体消息集无关，换 ASN 重新生成代码后照常可用。限制：依赖 asn1c 0.9.29 的描述符布局；不支持 `-fwide-types` 生成的 `INTEGER_t` 大整数和 REAL 的 JSON 输入。
 
 hex 工具 `afl/string/Hex2String.h`：`toHexDump` / `parseHexBytes` 为二进制安全版本（可含 0x00，解析容忍空格、`0x`、`:`、`,`）；旧的 `encodeToHexString` / `decodeHexString` 按 C 字符串处理，遇 0x00 截断，不要用于编码数据。
 
@@ -367,3 +367,5 @@ hex 工具 `afl/string/Hex2String.h`：`toHexDump` / `parseHexBytes` 为二进�
   `nod::connection`→`afl::base::Connection`；尚未移植 nod 的 accumulate/adapter
 - 综合示例见 `examples/demo_app`（`./build.sh --demo`）
 - asn1c 为宿主机工具；生成的 `.c` 再交叉编进 OBU/RSU，详见 `thirdparty/asn1c-master/README.zh.md`
+- JSON 开放类型（`&Type`）已按 JER 实现，但 OBU 的 CCSA 消息集里没有开放类型，demo 未覆盖；RSU NR 的 `MessageFrameExt` 接入时需补测
+- RSU 仍用未打补丁的 libasn1c，`check()` 不会检查嵌套成员；RSU 用 `fromJson` 的数据要以 UPER 编码是否成功为准

@@ -17,6 +17,7 @@
  *   ./asn1_codec_demo decode --xer  samples/rsi.xml
  *   ./asn1_codec_demo decode --hex  "30 0A 1F ..."   # 也接受 300A1F / 0x30,0x0A
  *   ./asn1_codec_demo decode --hex-file samples/rsi.hex
+ *   ./asn1_codec_demo decode --json samples/rsi.json      # JSON → 结构 → UPER
  *   任意命令加 --format json|both 以 JSON 显示结构（默认 asn = asn_fprint）
  */
 
@@ -106,7 +107,14 @@ void fillBsm(MessageFramePtr& mf)
     bsm->size.width = 180;
     bsm->size.length = 450;
     bsm->vehicleClass.classification = 10;
-    /* angle / safetyExt 等 OPTIONAL 故意不填 → 测「缺省」 */
+    /* angle 等 OPTIONAL 故意不填 → 测「缺省」 */
+
+    /* safetyExt.events：SIZE(13,...) 可扩展 BIT STRING → JSON 为 {"value","length"} 变长形式 */
+    fragment(bsm->safetyExt);
+    fragment(bsm->safetyExt->events);
+    BitString events(*bsm->safetyExt->events, 13);
+    events.set(VehicleEventFlags_eventHazardLights);
+    events.set(VehicleEventFlags_eventABSactivated);
 }
 
 /* ---------- RSM：列表 + 多 OPTIONAL（有/无混用）+ CHOICE 偏移 ---------- */
@@ -567,9 +575,17 @@ bool verifyMap(const MessageFramePtr& mf)
 
 bool verifyBsm(const MessageFramePtr& mf)
 {
-    return mf->present == MessageFrame_PR_bsmFrame && mf->bsmFrame
-        && mf->bsmFrame->pos.elevation && !mf->bsmFrame->angle
-        && mf->bsmFrame->msgCnt == 7;
+    if (mf->present != MessageFrame_PR_bsmFrame || !mf->bsmFrame) {
+        return false;
+    }
+    const BasicSafetyMessage_t* bsm = mf->bsmFrame;
+    if (!bsm->pos.elevation || bsm->angle || bsm->msgCnt != 7 || !bsm->safetyExt
+        || !bsm->safetyExt->events) {
+        return false;
+    }
+    const BIT_STRING_t* ev = bsm->safetyExt->events;
+    const size_t bits = ev->size * 8 - static_cast<size_t>(ev->bits_unused);
+    return bits == 13 && ev->buf[0] == 0xA0 && ev->buf[1] == 0x00;
 }
 
 bool verifyRsi(const MessageFramePtr& mf)
@@ -628,17 +644,18 @@ int roundtripOne(const char* name,
     const std::string uperPath = outDir + "/" + name + ".uper";
     const std::string xerPath = outDir + "/" + name + ".xml";
     const std::string hexPath = outDir + "/" + name + ".hex";
+    const std::string jsonPath = outDir + "/" + name + ".json";
     const std::string uper = src.encode<B_UPER>();
     const std::string hex = src.encodeHex<B_UPER>();
     if (uper.empty() || !writeFile(uperPath, uper) || !writeFile(hexPath, hex + "\n")
-        || !src.encodeToFile<B_XER>(xerPath)) {
+        || !writeFile(jsonPath, src.toJson() + "\n") || !src.encodeToFile<B_XER>(xerPath)) {
         std::cerr << name << ": encode / write failed\n";
         return 1;
     }
     printStructure(src, std::string(name) + " encoded");
     printUperHex(uper, name);
     std::cout << "wrote " << uperPath << " (" << uper.size() << " B)  " << hexPath << "  "
-              << xerPath << " (" << src.encode<B_XER>().size() << " B)\n";
+              << jsonPath << "  " << xerPath << " (" << src.encode<B_XER>().size() << " B)\n";
 
     struct Step {
         const char* tag;
@@ -650,6 +667,16 @@ int roundtripOne(const char* name,
         {"XER file", [](MessageFramePtr& m, const std::string& p) { return m.decodeFromFile<B_XER>(p); },
          xerPath},
         {"UPER hex", [](MessageFramePtr& m, const std::string& h) { return m.decodeHex<B_UPER>(h); }, hex},
+        {"JSON file",
+         [](MessageFramePtr& m, const std::string& p) {
+             std::string err;
+             const bool ok = m.fromJsonFile(p, &err);
+             if (!ok) {
+                 std::cerr << "fromJson: " << err << "\n";
+             }
+             return ok;
+         },
+         jsonPath},
     };
     for (size_t i = 0; i < sizeof(steps) / sizeof(steps[0]); ++i) {
         MessageFramePtr back;
@@ -662,9 +689,14 @@ int roundtripOne(const char* name,
             std::cerr << name << ": verify after " << steps[i].tag << " failed\n";
             return 1;
         }
+        if (back.encode<B_UPER>() != uper) {
+            std::cerr << name << ": re-encoded UPER after " << steps[i].tag
+                      << " differs from original\n";
+            return 1;
+        }
     }
 
-    std::cout << "PASS: " << name << " UPER/XER/hex roundtrip\n";
+    std::cout << "PASS: " << name << " UPER/XER/hex/JSON roundtrip (UPER bytes identical)\n";
     return 0;
 }
 
@@ -740,6 +772,57 @@ int testListOwnership()
     return 0;
 }
 
+/* ---------- JSON 输入错误：结构/类型错误由 fromJson 报出（带字段路径），取值越界由 check() 报出 ---------- */
+int testJsonErrors()
+{
+    std::cout << "\n######## json input errors ########\n";
+    struct Case {
+        const char* json;
+        const char* expectInError;
+    } cases[] = {
+        {"{\"bsmFrame\": ", "invalid JSON"},
+        {"{\"nope\": {}}", "unknown alternative \"nope\""},
+        {"{\"rsiFrame\": {\"msgCnt\": 1}}", "rsiFrame.id: missing mandatory member"},
+        {"{\"rsiFrame\": {\"msgCnt\": \"x\", \"id\": \"00\", \"refPos\": {\"lat\": 0, \"long\": 0}}}",
+         "rsiFrame.msgCnt: expected integer"},
+        {"{\"rsiFrame\": {\"msgCnt\": 1, \"typo\": 1}}", "rsiFrame: unknown member \"typo\""},
+        {"{\"bsmFrame\": {\"msgCnt\": 1, \"id\": \"00\", \"secMark\": 0,"
+         " \"pos\": {\"lat\": 0, \"long\": 0}, \"transmission\": \"flying\"}}",
+         "bsmFrame.transmission: unknown enumerator \"flying\""},
+        {"{\"rsiFrame\": {\"msgCnt\": 1, \"id\": \"0000000000000000\","
+         " \"refPos\": {\"lat\": 0, \"long\": 0}, \"rtss\": [{\"rtsId\": 1, \"signType\": 1,"
+         " \"referenceLinks\": [{\"upstreamNodeId\": {\"id\": 1}, \"downstreamNodeId\": {\"id\": 2},"
+         " \"referenceLanes\": \"ZZ\"}]}]}}",
+         "rsiFrame.rtss[0].referenceLinks[0].referenceLanes: expected hex string"},
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        MessageFramePtr mf;
+        std::string err;
+        if (mf.fromJson(cases[i].json, &err)) {
+            std::cerr << "case " << i << ": expected failure\n";
+            return 1;
+        }
+        if (err.find(cases[i].expectInError) == std::string::npos) {
+            std::cerr << "case " << i << ": unexpected error: " << err << "\n";
+            return 1;
+        }
+        std::cout << "  rejected: " << err << "\n";
+    }
+
+    MessageFramePtr outOfRange;
+    const char* rts300 =
+        "{\"rsiFrame\": {\"msgCnt\": 1, \"id\": \"0000000000000000\","
+        " \"refPos\": {\"lat\": 0, \"long\": 0}, \"rtss\": [{\"rtsId\": 300, \"signType\": 1}]}}";
+    std::string err;
+    if (!outOfRange.fromJson(rts300, &err) || outOfRange.check(err)) {
+        std::cerr << "rtsId=300 should parse but fail check()\n";
+        return 1;
+    }
+    std::cout << "  check() rejected: " << err << "\n";
+    std::cout << "PASS: json input errors\n";
+    return 0;
+}
+
 int cmdRoundtrip(const std::string& outDir)
 {
     int rc = 0;
@@ -749,8 +832,9 @@ int cmdRoundtrip(const std::string& outDir)
     rc |= roundtripOne("map", fillMap, verifyMap, outDir);
     rc |= roundtripOne("rsi", fillRsi, verifyRsi, outDir);
     rc |= testListOwnership();
+    rc |= testJsonErrors();
     if (rc == 0) {
-        std::cout << "\nALL PASS: BSM + RSM + SPAT + MAP + RSI + list ownership\n";
+        std::cout << "\nALL PASS: BSM + RSM + SPAT + MAP + RSI + list ownership + json errors\n";
     }
     return rc;
 }
@@ -774,13 +858,14 @@ int cmdEncodeSample(const std::string& outDir)
         const std::string uper = mf.encode<B_UPER>();
         if (uper.empty() || !writeFile(base + ".uper", uper)
             || !writeFile(base + ".hex", afl::str::toHexDump(uper) + "\n")
+            || !writeFile(base + ".json", mf.toJson() + "\n")
             || !mf.encodeToFile<B_XER>(base + ".xml")) {
             std::cerr << "encode-sample failed: " << items[i].name << "\n";
             return 1;
         }
         printStructure(mf, std::string(items[i].name) + " encoded");
         printUperHex(uper, items[i].name);
-        std::cout << "wrote " << base << ".uper / .hex / .xml\n";
+        std::cout << "wrote " << base << ".uper / .hex / .json / .xml\n";
     }
     return 0;
 }
@@ -798,6 +883,21 @@ int cmdDecode(const std::string& codec, const std::string& input)
         ok = readFile(input, uper) && mf.decode<B_UPER>(uper);
     } else if (codec == "xer") {
         ok = mf.decodeFromFile<B_XER>(input);
+    } else if (codec == "json") {
+        std::string err;
+        if (!mf.fromJsonFile(input, &err)) {
+            std::cerr << "fromJson failed: " << err << "\n";
+            return 1;
+        }
+        if (!checkConstraints(mf, "json")) {
+            return 1;
+        }
+        uper = mf.encode<B_UPER>();
+        if (uper.empty()) {
+            std::cerr << "UPER encode of JSON input failed\n";
+            return 1;
+        }
+        ok = true;
     } else if (codec == "hex" || codec == "hex-file") {
         std::string text = input;
         if (codec == "hex-file" && !readFile(input, text)) {
@@ -814,7 +914,7 @@ int cmdDecode(const std::string& codec, const std::string& input)
         return 1;
     }
     if (!uper.empty()) {
-        printUperHex(uper, "input");
+        printUperHex(uper, codec == "json" ? "encoded from JSON" : "input");
     }
     if (!ok) {
         std::cerr << "decode failed (" << codec << ")\n";
@@ -835,6 +935,7 @@ void usage(const char* argv0)
         << "  " << argv0 << " decode --xer  FILE\n"
         << "  " << argv0 << " decode --hex  \"30 0A 1F ...\"   (also 300A1F, 0x30,0x0A)\n"
         << "  " << argv0 << " decode --hex-file FILE\n"
+        << "  " << argv0 << " decode --json FILE          (JER-style JSON -> struct -> UPER)\n"
         << "Options:\n"
         << "  --format asn|json|both   structure display (default asn)\n";
 }
@@ -867,7 +968,8 @@ int main(int argc, char** argv)
             }
             continue;
         }
-        if ((a == "--uper" || a == "--xer" || a == "--hex" || a == "--hex-file") && i + 1 < argc) {
+        if ((a == "--uper" || a == "--xer" || a == "--hex" || a == "--hex-file" || a == "--json")
+            && i + 1 < argc) {
             codec = a.substr(2);
             path = argv[++i];
             continue;

@@ -44,6 +44,8 @@
 #error "Include asn1c generated headers (e.g. MessageFrame.h) before afl/asn1/Asn1Cpp.h"
 #endif
 
+#include "afl/asn1/Asn1Json.h"
+
 namespace afl {
 namespace asn1 {
 
@@ -282,6 +284,12 @@ public:
         }
         free(memPtr);
         return out;
+    }
+
+    /** JSON 文本（仅显示用，规则见 Asn1Json.h）；indent=0 输出单行 */
+    std::string toJson(int indent = 2) const
+    {
+        return afl::asn1::toJson(getDescriptor(), this->get(), indent);
     }
 
     /** 编码并转成 hex 文本（如 "30 0A ..."）；bytesPerLine=0 不换行 */

@@ -68,8 +68,24 @@ cd demo/codec_demo
 ./run.sh decode --xer  samples/rsi.xml
 ./run.sh decode --hex  "00 00 E8 88 ..."   # 也接受 0000E888…、0x00,0x00,…、00:00:…
 ./run.sh decode --hex-file samples/rsi.hex
+./run.sh decode --hex-file samples/rsi.hex --format json   # JSON 显示；both = asn_print + JSON
 ./run.sh --clean
 ```
+
+JSON 规则（`afl/asn1/Asn1Json.h`，asn1c 0.9.29 无 JER，按类型描述符自行输出，仅用于显示）：
+
+| ASN.1 类型 | JSON |
+|------------|------|
+| SEQUENCE / SET | 对象；未填的 OPTIONAL 不出现 |
+| CHOICE | `{"分支名": 值}`，如顶层 `{"bsmFrame": {...}}` |
+| SEQUENCE OF | 数组 |
+| INTEGER（native） | 数字 |
+| ENUMERATED | 枚举名，如 `"forwardGears"` |
+| BOOLEAN / NULL | `true`/`false` / `null` |
+| IA5String / UTF8String 等 | 字符串 |
+| OCTET STRING | 大写 hex，如 `"id": "44454D4F30303031"` |
+| BIT STRING | 01 串，如 `"referenceLanes": "0110000000000000"` |
+| 其它（大整数、REAL 等） | asn1c 打印文本，可解析为数字时输出数字 |
 
 输出约定：每次编码、解码后都打印 `asn_print`（`asn_fprint`）完整结构；UPER 编码后与 UPER/hex 输入解码前打印 hex 字节（每行 16 字节）。roundtrip 对每类消息依次验证 UPER 文件、XER 文件、UPER hex 三条解码路径。hex 文本非法（奇数位、非 hex 字符）或解码失败时返回码为 1。
 
@@ -89,6 +105,7 @@ mf.decodeFromFile<afl::asn1::B_UPER>("a.uper");
 mf.decodeFromFile<afl::asn1::B_XER>("a.xml");
 
 std::cout << mf.dump();                          // asn_fprint 完整结构（不截断）
+std::cout << mf.toJson();                        // JSON（缩进 2）；toJson(0) 单行，适合写日志
 std::string hex = mf.encodeHex<afl::asn1::B_UPER>(); // "00 00 E8 88 ..."
 mf.decodeHex<afl::asn1::B_UPER>(hex);            // 格式同 afl::str::parseHexBytes
 ```

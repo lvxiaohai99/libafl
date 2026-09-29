@@ -30,7 +30,8 @@ inline std::string decodeHexString(const std::string& hexstr)
     int index = 0;
     while (hexstr[index] != '\0')
     {
-        buf += static_cast<char>(g_hexNum[hexstr[index]] * 16 + g_hexNum[hexstr[index + 1]]);
+        buf += static_cast<char>(g_hexNum[static_cast<unsigned char>(hexstr[index]) & 0x7F] * 16
+                                 + g_hexNum[static_cast<unsigned char>(hexstr[index + 1]) & 0x7F]);
         index += 2;
     }
     return buf;

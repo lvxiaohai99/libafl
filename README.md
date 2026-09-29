@@ -28,7 +28,7 @@ libafl/
 │   ├── process/          # Daemonize、ProcessUtil、SingletonProgram
 │   ├── net/              # EventLoop、Tcp*、http/、websocket/、SslHelper
 │   └── framework/        # Module、ModuleManager …          (afl::fw)
-│   └── asn1/             # Asn1Cpp（asn1c RAII，头文件，需配合 asn1c 生成代码）
+│   └── asn1/             # Asn1Cpp（asn1c RAII）+ Asn1Json（结构转 JSON），头文件，需配合 asn1c 生成代码
 ├── examples/             # 综合示例（demo_app）
 ├── thirdparty/           # spdlog / nlohmann / googletest / asn1c（见各目录 README）
 ├── test/                 # gtest
@@ -350,7 +350,7 @@ cd codec_demo && ./run.sh  # C++ UPER/XER 编解码（用 afl/asn1/Asn1Cpp.h）
 # 详细用法见 thirdparty/asn1c-master/README.zh.md
 ```
 
-头文件 `afl/asn1/Asn1Cpp.h`：对 asn1c 生成类型做 RAII（`encode`/`decode`/`encodeToFile`/`decodeFromFile`/`encodeHex`/`decodeHex`、`dump()` 打印完整结构），支持 UPER、XER、BER、OER。
+头文件 `afl/asn1/Asn1Cpp.h`：对 asn1c 生成类型做 RAII（`encode`/`decode`/`encodeToFile`/`decodeFromFile`/`encodeHex`/`decodeHex`、`dump()` 打印完整结构、`toJson()` 输出 JSON），支持 UPER、XER、BER、OER。JSON 由 `afl/asn1/Asn1Json.h` 按类型描述符生成，仅用于显示，不能反向解码。
 
 hex 工具 `afl/string/Hex2String.h`：`toHexDump` / `parseHexBytes` 为二进制安全版本（可含 0x00，解析容忍空格、`0x`、`:`、`,`）；旧的 `encodeToHexString` / `decodeHexString` 按 C 字符串处理，遇 0x00 截断，不要用于编码数据。
 

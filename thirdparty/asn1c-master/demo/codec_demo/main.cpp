@@ -17,6 +17,7 @@
  *   ./asn1_codec_demo decode --xer  samples/rsi.xml
  *   ./asn1_codec_demo decode --hex  "30 0A 1F ..."   # 也接受 300A1F / 0x30,0x0A
  *   ./asn1_codec_demo decode --hex-file samples/rsi.hex
+ *   任意命令加 --format json|both 以 JSON 显示结构（默认 asn = asn_fprint）
  */
 
 #include "MessageFrame.h"
@@ -462,11 +463,19 @@ void printSummary(const MessageFramePtr& mf, const char* tag)
     }
 }
 
-/** asn_fprint 完整结构 */
+/** 结构显示格式：asn = asn_fprint 文本，json = JSON，both = 两者都打印 */
+std::string g_format = "asn";
+
 void printStructure(const MessageFramePtr& mf, const std::string& tag)
 {
-    std::cout << "---- asn_print: " << tag << " ----\n" << mf.dump();
-    std::cout << "---- end " << tag << " ----\n";
+    if (g_format == "asn" || g_format == "both") {
+        std::cout << "---- asn_print: " << tag << " ----\n" << mf.dump();
+        std::cout << "---- end " << tag << " ----\n";
+    }
+    if (g_format == "json" || g_format == "both") {
+        std::cout << "---- json: " << tag << " ----\n" << mf.toJson() << "\n";
+        std::cout << "---- end " << tag << " ----\n";
+    }
 }
 
 /** UPER 字节的 hex 形式（每行 16 字节） */
@@ -825,7 +834,9 @@ void usage(const char* argv0)
         << "  " << argv0 << " decode --uper FILE\n"
         << "  " << argv0 << " decode --xer  FILE\n"
         << "  " << argv0 << " decode --hex  \"30 0A 1F ...\"   (also 300A1F, 0x30,0x0A)\n"
-        << "  " << argv0 << " decode --hex-file FILE\n";
+        << "  " << argv0 << " decode --hex-file FILE\n"
+        << "Options:\n"
+        << "  --format asn|json|both   structure display (default asn)\n";
 }
 
 } // namespace
@@ -845,6 +856,15 @@ int main(int argc, char** argv)
         }
         if (a == "-o" && i + 1 < argc) {
             outDir = argv[++i];
+            continue;
+        }
+        if (a == "--format" && i + 1 < argc) {
+            g_format = argv[++i];
+            if (g_format != "asn" && g_format != "json" && g_format != "both") {
+                std::cerr << "unknown format: " << g_format << "\n";
+                usage(argv[0]);
+                return 1;
+            }
             continue;
         }
         if ((a == "--uper" || a == "--xer" || a == "--hex" || a == "--hex-file") && i + 1 < argc) {

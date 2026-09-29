@@ -1,0 +1,3 @@
+# clangd：用 CMake 导出的编译数据库做跳转 / 补全
+CompileFlags:
+  CompilationDatabase: build

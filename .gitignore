@@ -1,0 +1,14 @@
+docs/
+build/
+build-arm/
+build-coverage/
+coverage-report/
+install/
+install-arm/
+compile_commands.json
+/samples/
+*.log
+*.deb
+*.gcda
+*.gcno
+*.gcov

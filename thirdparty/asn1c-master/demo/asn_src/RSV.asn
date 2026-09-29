@@ -1,0 +1,36 @@
+/**
+ * Creator: ASNDT (http://www.asnlab.org)
+ * Author: WANGYizhi
+ * Created: Tue Apr 23 18:30:27 CST 2019
+ */
+RSV DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+
+-- imports and exports
+
+EXPORTS RoadSideVideo;
+IMPORTS Position3D FROM DefPosition
+		MsgCount FROM MsgFrame
+		MinuteOfTheYear, DSecond, TimeConfidence FROM DefTime
+		PositionOffsetLLV FROM DefPositionOffset
+		NodeReferenceID FROM MapNode
+		RTEList FROM RSI
+		RTSList FROM RSI
+		Confidence FROM VehSafetyExt;
+	
+	RoadSideVideo ::= SEQUENCE {
+		msgCnt MsgCount,
+		moy MinuteOfTheYear OPTIONAL,
+		id OCTET STRING (SIZE(8)),
+		-- RSU ID
+		refPos Position3D,
+		-- Reference position of this RSI message
+		rtes RTEList OPTIONAL,
+		-- All the rte data packed in this message
+		rtss RTSList OPTIONAL,
+		-- All the rts data packed in this message
+		video OCTET STRING,
+		-- Video stream
+		...
+	}
+	
+END

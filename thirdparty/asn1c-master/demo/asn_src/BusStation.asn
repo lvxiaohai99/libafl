@@ -1,0 +1,49 @@
+/**
+ * Author: CHENDeLong
+ * Created: Thur Nov 7 16:10:00 CST 2019
+ */
+BusStation DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+
+-- imports and exports
+
+EXPORTS BusStationInformation;
+IMPORTS Position3D FROM DefPosition
+		PositionOffsetLLV FROM DefPositionOffset;
+	
+	BusStationInformation ::= SEQUENCE {
+		id BusStationNum,
+		name OCTET STRING OPTIONAL,
+		refPos Position3D,
+		busInfo  SEQUENCE OF BusInfo,
+		ingress  SEQUENCE OF Ingress,
+		stopArea SEQUENCE OF StopArea
+	}
+
+	BusInfo ::= SEQUENCE {
+		busNumber OCTET STRING (SIZE(1..63)),
+		departureStation OCTET STRING (SIZE(1..63)) OPTIONAL,
+		terminalStation OCTET STRING (SIZE(1..63)) OPTIONAL,
+		ingressPathId INTEGER,
+		stopAreaId INTEGER,
+		waitingNumber INTEGER
+	}
+
+	Ingress ::= SEQUENCE {
+		id INTEGER,
+		radius INTEGER (0..1024),
+		path SEQUENCE (SIZE(2..32)) OF PositionOffsetLLV
+	}
+		
+	StopArea ::= SEQUENCE{
+		id INTEGER,
+		leftPoint  Position3D,
+		rightPoint Position3D,
+		downPoint  Position3D
+	}
+	
+	BusStationNum ::= SEQUENCE {
+		regionId INTEGER (0..65535) OPTIONAL,
+		stationId INTEGER (0..65535)
+	}
+	
+END

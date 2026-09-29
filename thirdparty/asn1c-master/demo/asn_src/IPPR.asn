@@ -1,0 +1,28 @@
+
+IPPR DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+
+	IMPORTS	MsgCount FROM MsgFrame
+			DSecond FROM DefTime;
+
+	IntersectionPriorityPassingRequest ::= SEQUENCE { 
+		msgCnt MsgCount,
+
+		id OCTET STRING (SIZE(8)),
+		-- vehicle ID
+		plateNo OCTET STRING (SIZE(4..16)) OPTIONAL,
+		-- Reserved for Electronic Vehicle Identification
+
+		secMark DSecond,
+		drivingIntention DrivingIntention,
+		...
+	}
+
+	DrivingIntention ::= CHOICE {
+		goStraight OCTET STRING,
+		turnLeft OCTET STRING,
+		turnRight OCTET STRING,
+		turnRound OCTET STRING,
+		...
+	}	
+
+END

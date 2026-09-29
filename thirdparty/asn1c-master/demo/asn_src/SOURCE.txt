@@ -1,0 +1,3 @@
+来源（副本，便于独立演示，不随原工程联动更新）：
+  rsu/new4layer_rsu_3a31/libccsa_2020/MessageFrame/asn1/*.asn
+协议：CCSA 2020 MessageFrame（BSM/Map/SPAT/RSI/RSM 等）

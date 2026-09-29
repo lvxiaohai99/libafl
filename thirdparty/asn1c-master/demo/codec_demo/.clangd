@@ -1,0 +1,4 @@
+# 本目录源码纳入 libafl 根目录的 compile_commands（../.../libafl/build）
+# 若 IDE 仍不跳转：在 obu/libafl 下执行 ./build.sh，并确认工作区打开了 libafl 或含其 compile_commands。
+CompileFlags:
+  CompilationDatabase: ../../../../build

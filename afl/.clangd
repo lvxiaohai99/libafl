@@ -1,0 +1,3 @@
+# 兜底：从任意 afl/ 子目录打开文件时，都用工程根 build/ 里的编译数据库
+CompileFlags:
+  CompilationDatabase: ../build

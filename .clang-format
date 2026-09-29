@@ -1,0 +1,53 @@
+# libafl C++11 style — match existing Allman braces + 4-space indent
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: Cpp11
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+ContinuationIndentWidth: 4
+
+BreakBeforeBraces: Allman
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+
+AccessModifierOffset: -4
+NamespaceIndentation: None
+IndentCaseLabels: false
+IndentPPDirectives: None
+
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+SortIncludes: false
+IncludeBlocks: Preserve
+
+SpaceAfterCStyleCast: false
+SpaceBeforeParens: ControlStatements
+SpaceBeforeAssignmentOperators: true
+SpacesInAngles: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignTrailingComments: true
+AlignAfterOpenBracket: Align
+
+MaxEmptyLinesToKeep: 2
+KeepEmptyLinesAtTheStartOfBlocks: false
+ReflowComments: false
+FixNamespaceComments: true
+CompactNamespaces: false
+
+Cpp11BracedListStyle: true
+AlwaysBreakTemplateDeclarations: Yes
+AlwaysBreakAfterReturnType: None
+BinPackArguments: true
+BinPackParameters: true
+AllowAllParametersOfDeclarationOnNextLine: true

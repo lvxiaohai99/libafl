@@ -1,0 +1,17 @@
+/**
+ * Creator: ASNDT (http://www.asnlab.org)
+ * Author: WANGYizhi
+ * Created: Sat Jun 17 11:08:08 CST 2017
+ */
+PrivateMessage DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+
+-- imports and exports
+EXPORTS PrivateMsg;
+IMPORTS MsgCount FROM MsgFrame;
+			
+	PrivateMsg ::= SEQUENCE {
+		msgCnt MsgCount,
+		userData OCTET STRING (SIZE(1..2048))
+	}
+	
+END

@@ -1,0 +1,9 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+
+# Optional: consumers may also find OpenSSL if afl was built with SSL
+include("${CMAKE_CURRENT_LIST_DIR}/aflTargets.cmake")
+
+check_required_components(afl)

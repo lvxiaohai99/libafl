@@ -87,6 +87,8 @@ JSON 规则（`afl/asn1/Asn1Json.h`，asn1c 0.9.29 无 JER，按类型描述符�
 | BIT STRING | 01 串，如 `"referenceLanes": "0110000000000000"` |
 | 其它（大整数、REAL 等） | asn1c 打印文本，可解析为数字时输出数字 |
 
+程序本体在 `obu/libafl/build/bin/afl_asn1_codec_demo`；`codec_demo/build/asn1_codec_demo` 是 `run.sh` 维护的软链接，始终指向最新构建。`-h` 里看不到 `--hex` / `--format` 说明运行的是旧程序，重新执行 `./run.sh` 即可。
+
 输出约定：每次编码、解码后都打印 `asn_print`（`asn_fprint`）完整结构；UPER 编码后与 UPER/hex 输入解码前打印 hex 字节（每行 16 字节）。roundtrip 对每类消息依次验证 UPER 文件、XER 文件、UPER hex 三条解码路径。hex 文本非法（奇数位、非 hex 字符）或解码失败时返回码为 1。
 
 IDE 跳转：`codec_demo` 已挂到 libafl 主 CMake；在 `obu/libafl` 下执行过 `./build.sh`（或 `./run.sh`）后，点击 `afl::asn1::Asn1List` / `Asn1Cpp.h` 即可转到定义。若无效，重载 clangd 窗口。

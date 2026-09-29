@@ -6,7 +6,11 @@
 #  用法：
 #    ./run.sh                  # 生成协议（若需要）→ cmake 编译 → roundtrip
 #    ./run.sh decode --uper samples/rsi.uper
+#    ./run.sh decode --hex "00 00 E8 ..." --format json
 #    ./run.sh --clean
+#
+#  程序本体：obu/libafl/build/bin/afl_asn1_codec_demo
+#  build/asn1_codec_demo 是指向它的软链接（每次 run.sh 更新）
 # ============================================================================
 set -euo pipefail
 
@@ -42,6 +46,10 @@ if [ ! -x "${BIN}" ]; then
     echo "ERROR: missing ${BIN}" >&2
     exit 1
 fi
+
+# build/asn1_codec_demo 始终指向 libafl 构建出的最新程序，避免运行到旧的独立编译产物
+mkdir -p "${CODEC_DIR}/build"
+ln -sfn "${BIN}" "${CODEC_DIR}/build/asn1_codec_demo"
 
 echo "==> run"
 cd "${CODEC_DIR}"

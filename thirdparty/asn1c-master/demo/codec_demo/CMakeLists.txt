@@ -50,6 +50,16 @@ target_link_libraries(afl_asn1_codec_demo PRIVATE afl_asn1_codec_objs)
 target_compile_features(afl_asn1_codec_demo PRIVATE cxx_std_11)
 target_compile_options(afl_asn1_codec_demo PRIVATE -Wall)
 
+# 与 Asn1Cpp.h / Asn1Json.h 同目录的空壳 TU，写入 compile_commands，供单独打开头文件时跳转
+add_library(afl_asn1_ide OBJECT "${AFL_SRC_ROOT}/afl/asn1/Asn1Ide.cpp")
+target_include_directories(afl_asn1_ide PRIVATE
+    "${AFL_SRC_ROOT}"
+    "${AFL_SRC_ROOT}/thirdparty"
+    "${AFL_ASN_OUT}"
+    "${AFL_LIBASN1C}"
+)
+target_compile_features(afl_asn1_ide PRIVATE cxx_std_11)
+
 set_target_properties(afl_asn1_codec_demo PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )

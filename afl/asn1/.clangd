@@ -1,0 +1,12 @@
+# 单独打开 Asn1Cpp.h / Asn1Json.h 时强制带上 asn1c 生成头与 include 路径。
+# 否则文件顶部 #error 会让整文件解析失败，同文件符号也无法跳转。
+CompileFlags:
+  CompilationDatabase: ../../build
+  Add:
+    - -I../..
+    - -I../../thirdparty
+    - -I../../thirdparty/asn1c-master/demo/asn_out
+    - -I../../thirdparty/asn1c-master/demo/libasn1c
+    - -include
+    - MessageFrame.h
+    - -std=c++11

@@ -62,6 +62,8 @@ endif()
 if(NOT AFL_HAVE_SSL)
     list(FILTER AFL_SOURCES EXCLUDE REGEX "SslHelper\\.(cpp|c)$")
 endif()
+# Asn1Ide.cpp 只给 clangd 用（由 codec_demo 的 afl_asn1_ide 目标编译），不要编进 libafl
+list(FILTER AFL_SOURCES EXCLUDE REGEX "Asn1Ide\\.cpp$")
 
 if(AFL_BUILD_SHARED)
     add_library(afl SHARED ${AFL_SOURCES})

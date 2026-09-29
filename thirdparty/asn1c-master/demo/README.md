@@ -99,7 +99,7 @@ JSON 输入校验：未知成员、缺必选成员、类型不符、整数超出
 
 输出约定：每次编码、解码后都打印 `asn_print`（`asn_fprint`）完整结构；UPER 编码后与 UPER/hex 输入解码前打印 hex 字节（每行 16 字节）。roundtrip 对每类消息依次验证 UPER 文件、XER 文件、UPER hex、JSON 文件四条解码路径，每条都要求重新编码后 UPER 字节完全一致。hex 文本非法（奇数位、非 hex 字符）或解码失败时返回码为 1。
 
-IDE 跳转：`codec_demo` 已挂到 libafl 主 CMake；在 `obu/libafl` 下执行过 `./build.sh`（或 `./run.sh`）后，点击 `afl::asn1::Asn1List` / `Asn1Cpp.h` 即可转到定义。若无效，重载 clangd 窗口。
+IDE 跳转：`codec_demo` 已挂到 libafl 主 CMake；`afl/asn1/Asn1Ide.cpp` 保证单独打开 `Asn1Cpp.h` / `Asn1Json.h` 时也能解析（这两个头要求先有 asn1c 生成头）。在 `obu/libafl` 下执行过 `./build.sh`（或 `./run.sh`）后可跳转。若仍无效：命令面板执行 “clangd: Restart language server”，并确认工作区能看到 `obu/libafl/compile_commands.json`。
 
 核心 API：
 

@@ -6,13 +6,17 @@
  *   - OPTIONAL（有/无两种）
  *   - CHOICE（MessageFrame、PositionOffsetLL、TimeChangeDetails、Description）
  *   - BIT STRING（IntersectionStatusObject、ReferenceLanes）
- *   - 从 .uper / .xml 文件解析回 MessageFrame
+ *   - 从 .uper / .xml / hex 文本解析回 MessageFrame
+ *
+ * 输出：每次编码、解码后都打印 asn_fprint 完整结构；UPER 编码后打印 hex 字节。
  *
  * 用法：
  *   ./asn1_codec_demo                 # 默认：五类消息全量 roundtrip
- *   ./asn1_codec_demo encode-sample -o samples
+ *   ./asn1_codec_demo encode-sample -o samples   # 写 .uper / .xml / .hex
  *   ./asn1_codec_demo decode --uper samples/rsi.uper
  *   ./asn1_codec_demo decode --xer  samples/rsi.xml
+ *   ./asn1_codec_demo decode --hex  "30 0A 1F ..."   # 也接受 300A1F / 0x30,0x0A
+ *   ./asn1_codec_demo decode --hex-file samples/rsi.hex
  */
 
 #include "MessageFrame.h"
@@ -22,7 +26,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 AFL_DECLARE_ASN1_TYPE(MessageFrame)
@@ -456,6 +462,37 @@ void printSummary(const MessageFramePtr& mf, const char* tag)
     }
 }
 
+/** asn_fprint 完整结构 */
+void printStructure(const MessageFramePtr& mf, const std::string& tag)
+{
+    std::cout << "---- asn_print: " << tag << " ----\n" << mf.dump();
+    std::cout << "---- end " << tag << " ----\n";
+}
+
+/** UPER 字节的 hex 形式（每行 16 字节） */
+void printUperHex(const std::string& uper, const std::string& tag)
+{
+    std::cout << "---- UPER hex: " << tag << " (" << uper.size() << " bytes) ----\n"
+              << afl::str::toHexDump(uper) << "\n";
+}
+
+bool readFile(const std::string& path, std::string& out)
+{
+    std::ifstream ifs(path.c_str(), std::ios::binary);
+    if (!ifs) {
+        return false;
+    }
+    out.assign(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
+    return true;
+}
+
+bool writeFile(const std::string& path, const std::string& data)
+{
+    std::ofstream ofs(path.c_str(), std::ios::binary);
+    ofs.write(data.data(), static_cast<std::streamsize>(data.size()));
+    return static_cast<bool>(ofs);
+}
+
 bool checkConstraints(const MessageFramePtr& mf, const char* tag)
 {
     std::string err;
@@ -581,36 +618,44 @@ int roundtripOne(const char* name,
 
     const std::string uperPath = outDir + "/" + name + ".uper";
     const std::string xerPath = outDir + "/" + name + ".xml";
-    if (!src.encodeToFile<B_UPER>(uperPath) || !src.encodeToFile<B_XER>(xerPath)) {
-        std::cerr << name << ": encodeToFile failed\n";
+    const std::string hexPath = outDir + "/" + name + ".hex";
+    const std::string uper = src.encode<B_UPER>();
+    const std::string hex = src.encodeHex<B_UPER>();
+    if (uper.empty() || !writeFile(uperPath, uper) || !writeFile(hexPath, hex + "\n")
+        || !src.encodeToFile<B_XER>(xerPath)) {
+        std::cerr << name << ": encode / write failed\n";
         return 1;
     }
-    std::cout << "wrote " << uperPath << " (" << src.encode<B_UPER>().size() << " B)  "
+    printStructure(src, std::string(name) + " encoded");
+    printUperHex(uper, name);
+    std::cout << "wrote " << uperPath << " (" << uper.size() << " B)  " << hexPath << "  "
               << xerPath << " (" << src.encode<B_XER>().size() << " B)\n";
 
-    MessageFramePtr fromUper;
-    if (!fromUper.decodeFromFile<B_UPER>(uperPath)) {
-        std::cerr << name << ": decode UPER failed\n";
-        return 1;
-    }
-    printSummary(fromUper, "from UPER file");
-    if (!verify(fromUper)) {
-        std::cerr << name << ": verify after UPER failed\n";
-        return 1;
+    struct Step {
+        const char* tag;
+        bool (*decode)(MessageFramePtr&, const std::string&);
+        std::string input;
+    } steps[] = {
+        {"UPER file", [](MessageFramePtr& m, const std::string& p) { return m.decodeFromFile<B_UPER>(p); },
+         uperPath},
+        {"XER file", [](MessageFramePtr& m, const std::string& p) { return m.decodeFromFile<B_XER>(p); },
+         xerPath},
+        {"UPER hex", [](MessageFramePtr& m, const std::string& h) { return m.decodeHex<B_UPER>(h); }, hex},
+    };
+    for (size_t i = 0; i < sizeof(steps) / sizeof(steps[0]); ++i) {
+        MessageFramePtr back;
+        if (!steps[i].decode(back, steps[i].input)) {
+            std::cerr << name << ": decode " << steps[i].tag << " failed\n";
+            return 1;
+        }
+        printStructure(back, std::string(name) + " decoded from " + steps[i].tag);
+        if (!verify(back)) {
+            std::cerr << name << ": verify after " << steps[i].tag << " failed\n";
+            return 1;
+        }
     }
 
-    MessageFramePtr fromXer;
-    if (!fromXer.decodeFromFile<B_XER>(xerPath)) {
-        std::cerr << name << ": decode XER failed\n";
-        return 1;
-    }
-    printSummary(fromXer, "from XER file");
-    if (!verify(fromXer)) {
-        std::cerr << name << ": verify after XER failed\n";
-        return 1;
-    }
-
-    std::cout << "PASS: " << name << " UPER/XER roundtrip\n";
+    std::cout << "PASS: " << name << " UPER/XER/hex roundtrip\n";
     return 0;
 }
 
@@ -716,38 +761,58 @@ int cmdEncodeSample(const std::string& outDir)
     for (size_t i = 0; i < sizeof(items) / sizeof(items[0]); ++i) {
         MessageFramePtr mf;
         items[i].fill(mf);
-        const std::string uper = outDir + "/" + items[i].name + ".uper";
-        const std::string xer = outDir + "/" + items[i].name + ".xml";
-        if (!mf.encodeToFile<B_UPER>(uper) || !mf.encodeToFile<B_XER>(xer)) {
+        const std::string base = outDir + "/" + items[i].name;
+        const std::string uper = mf.encode<B_UPER>();
+        if (uper.empty() || !writeFile(base + ".uper", uper)
+            || !writeFile(base + ".hex", afl::str::toHexDump(uper) + "\n")
+            || !mf.encodeToFile<B_XER>(base + ".xml")) {
             std::cerr << "encode-sample failed: " << items[i].name << "\n";
             return 1;
         }
-        std::cout << "wrote " << uper << " and " << xer << "\n";
+        printStructure(mf, std::string(items[i].name) + " encoded");
+        printUperHex(uper, items[i].name);
+        std::cout << "wrote " << base << ".uper / .hex / .xml\n";
     }
     return 0;
 }
 
-int cmdDecode(const std::string& codec, const std::string& path)
+/**
+ * codec: uper（二进制文件）| xer（XML 文件）| hex（命令行 hex 文本）| hex-file（hex 文本文件）
+ * 解码成功后打印 asn_fprint 结构；UPER 类输入同时打印输入字节的 hex。
+ */
+int cmdDecode(const std::string& codec, const std::string& input)
 {
     MessageFramePtr mf;
+    std::string uper;
     bool ok = false;
     if (codec == "uper") {
-        ok = mf.decodeFromFile<B_UPER>(path);
-    } else if (codec == "xer" || codec == "xml") {
-        ok = mf.decodeFromFile<B_XER>(path);
+        ok = readFile(input, uper) && mf.decode<B_UPER>(uper);
+    } else if (codec == "xer") {
+        ok = mf.decodeFromFile<B_XER>(input);
+    } else if (codec == "hex" || codec == "hex-file") {
+        std::string text = input;
+        if (codec == "hex-file" && !readFile(input, text)) {
+            std::cerr << "cannot read: " << input << "\n";
+            return 1;
+        }
+        if (!afl::str::parseHexBytes(text, uper)) {
+            std::cerr << "invalid hex text (odd digit count or non-hex char)\n";
+            return 1;
+        }
+        ok = mf.decode<B_UPER>(uper);
     } else {
         std::cerr << "unknown codec: " << codec << "\n";
         return 1;
     }
+    if (!uper.empty()) {
+        printUperHex(uper, "input");
+    }
     if (!ok) {
-        std::cerr << "decode failed: " << path << "\n";
+        std::cerr << "decode failed (" << codec << ")\n";
         return 1;
     }
-    printSummary(mf, path.c_str());
-    const std::string dump = mf.print<16384>();
-    if (!dump.empty()) {
-        std::cout << dump << "\n";
-    }
+    printSummary(mf, codec.c_str());
+    printStructure(mf, "decoded from " + codec);
     return 0;
 }
 
@@ -758,7 +823,9 @@ void usage(const char* argv0)
         << "  " << argv0 << " [roundtrip] [-o DIR]\n"
         << "  " << argv0 << " encode-sample [-o DIR]\n"
         << "  " << argv0 << " decode --uper FILE\n"
-        << "  " << argv0 << " decode --xer  FILE\n";
+        << "  " << argv0 << " decode --xer  FILE\n"
+        << "  " << argv0 << " decode --hex  \"30 0A 1F ...\"   (also 300A1F, 0x30,0x0A)\n"
+        << "  " << argv0 << " decode --hex-file FILE\n";
 }
 
 } // namespace
@@ -780,13 +847,8 @@ int main(int argc, char** argv)
             outDir = argv[++i];
             continue;
         }
-        if (a == "--uper" && i + 1 < argc) {
-            codec = "uper";
-            path = argv[++i];
-            continue;
-        }
-        if (a == "--xer" && i + 1 < argc) {
-            codec = "xer";
+        if ((a == "--uper" || a == "--xer" || a == "--hex" || a == "--hex-file") && i + 1 < argc) {
+            codec = a.substr(2);
             path = argv[++i];
             continue;
         }

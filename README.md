@@ -350,7 +350,9 @@ cd codec_demo && ./run.sh  # C++ UPER/XER 编解码（用 afl/asn1/Asn1Cpp.h）
 # 详细用法见 thirdparty/asn1c-master/README.zh.md
 ```
 
-头文件 `afl/asn1/Asn1Cpp.h`：对 asn1c 生成类型做 RAII（`encode`/`decode`/`encodeToFile`/`decodeFromFile`），支持 UPER、XER、BER、OER。
+头文件 `afl/asn1/Asn1Cpp.h`：对 asn1c 生成类型做 RAII（`encode`/`decode`/`encodeToFile`/`decodeFromFile`/`encodeHex`/`decodeHex`、`dump()` 打印完整结构），支持 UPER、XER、BER、OER。
+
+hex 工具 `afl/string/Hex2String.h`：`toHexDump` / `parseHexBytes` 为二进制安全版本（可含 0x00，解析容忍空格、`0x`、`:`、`,`）；旧的 `encodeToHexString` / `decodeHexString` 按 C 字符串处理，遇 0x00 截断，不要用于编码数据。
 
 内存：根节点析构整棵释放；中途清空/删除子结构只能用 `Asn1List::clear/remove`、`resetField`、`freeField`（按类型描述符递归释放），禁止 `asn_sequence_empty` / 裸 `free`。规则详见 `thirdparty/asn1c-master/demo/README.md`「内存释放规则」。
 

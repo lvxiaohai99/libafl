@@ -95,6 +95,33 @@ TEST(StringTest, Hex2StringRoundTrip)
     EXPECT_EQ(raw, back);
 }
 
+TEST(StringTest, HexDumpIsBinarySafe)
+{
+    const std::string raw("\x30\x00\xff\x0a", 4);
+    EXPECT_EQ("30 00 FF 0A", toHexDump(raw, 0));
+    EXPECT_EQ("30 00\nFF 0A", toHexDump(raw, 2));
+    EXPECT_EQ("", toHexDump(std::string()));
+}
+
+TEST(StringTest, ParseHexBytesAcceptsCommonFormats)
+{
+    const std::string expect("\x30\x00\xff\x0a", 4);
+    std::string out;
+    EXPECT_TRUE(parseHexBytes("30 00 FF 0A", out));
+    EXPECT_EQ(expect, out);
+    EXPECT_TRUE(parseHexBytes("3000ff0a", out));
+    EXPECT_EQ(expect, out);
+    EXPECT_TRUE(parseHexBytes("0x30,0x00,0xFF,0x0a\n", out));
+    EXPECT_EQ(expect, out);
+    EXPECT_TRUE(parseHexBytes("30:00:ff:0a", out));
+    EXPECT_EQ(expect, out);
+    EXPECT_TRUE(parseHexBytes(toHexDump(expect, 1), out));
+    EXPECT_EQ(expect, out);
+
+    EXPECT_FALSE(parseHexBytes("300", out));
+    EXPECT_FALSE(parseHexBytes("3g", out));
+}
+
 TEST(StringTest, Hex2StringKnownValue)
 {
     // 视实现大小写而定：只断言解码回环与长度

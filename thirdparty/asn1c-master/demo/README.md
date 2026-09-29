@@ -63,11 +63,15 @@ cd demo
 ```bash
 cd demo/codec_demo
 ./run.sh                              # 经 libafl CMake 编译（写入 compile_commands，可 IDE 跳转）
-./run.sh encode-sample -o samples
+./run.sh encode-sample -o samples     # 写 .uper / .xml / .hex
 ./run.sh decode --uper samples/rsi.uper
 ./run.sh decode --xer  samples/rsi.xml
+./run.sh decode --hex  "00 00 E8 88 ..."   # 也接受 0000E888…、0x00,0x00,…、00:00:…
+./run.sh decode --hex-file samples/rsi.hex
 ./run.sh --clean
 ```
+
+输出约定：每次编码、解码后都打印 `asn_print`（`asn_fprint`）完整结构；UPER 编码后与 UPER/hex 输入解码前打印 hex 字节（每行 16 字节）。roundtrip 对每类消息依次验证 UPER 文件、XER 文件、UPER hex 三条解码路径。hex 文本非法（奇数位、非 hex 字符）或解码失败时返回码为 1。
 
 IDE 跳转：`codec_demo` 已挂到 libafl 主 CMake；在 `obu/libafl` 下执行过 `./build.sh`（或 `./run.sh`）后，点击 `afl::asn1::Asn1List` / `Asn1Cpp.h` 即可转到定义。若无效，重载 clangd 窗口。
 
@@ -83,6 +87,10 @@ mf.encodeToFile<afl::asn1::B_UPER>("a.uper");
 mf.encodeToFile<afl::asn1::B_XER>("a.xml");
 mf.decodeFromFile<afl::asn1::B_UPER>("a.uper");
 mf.decodeFromFile<afl::asn1::B_XER>("a.xml");
+
+std::cout << mf.dump();                          // asn_fprint 完整结构（不截断）
+std::string hex = mf.encodeHex<afl::asn1::B_UPER>(); // "00 00 E8 88 ..."
+mf.decodeHex<afl::asn1::B_UPER>(hex);            // 格式同 afl::str::parseHexBytes
 ```
 
 ### 内存释放规则

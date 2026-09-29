@@ -38,6 +38,8 @@
 #include <string>
 #include <type_traits>
 
+#include "afl/string/Hex2String.h"
+
 #ifndef ASN_APPLICATION_H
 #error "Include asn1c generated headers (e.g. MessageFrame.h) before afl/asn1/Asn1Cpp.h"
 #endif
@@ -260,30 +262,58 @@ public:
         return true;
     }
 
-    bool printTo(char* ptr, size_t& len) const
+    /** asn_fprint 输出的完整结构文本（不截断）；失败或空指针返回空串 */
+    std::string dump() const
     {
-        if (ptr == 0 || len == 0 || !this->operator bool()) {
-            return false;
+        std::string out;
+        if (!this->operator bool()) {
+            return out;
         }
         char* memPtr = 0;
         size_t memSize = 0;
         FILE* tf = open_memstream(&memPtr, &memSize);
         if (!tf) {
-            return false;
+            return out;
         }
-        if (asn_fprint(tf, &getDescriptor(), this->get()) < 0) {
-            fclose(tf);
-            free(memPtr);
-            return false;
-        }
-        fflush(tf);
-        const size_t n = (memSize < len) ? memSize : len;
-        if (n > 0 && memPtr) {
-            memcpy(ptr, memPtr, n);
-        }
-        len = n;
+        const int rc = asn_fprint(tf, &getDescriptor(), this->get());
         fclose(tf);
+        if (rc == 0 && memPtr) {
+            out.assign(memPtr, memSize);
+        }
         free(memPtr);
+        return out;
+    }
+
+    /** 编码并转成 hex 文本（如 "30 0A ..."）；bytesPerLine=0 不换行 */
+    template <CodecType CT>
+    std::string encodeHex(size_t bytesPerLine = 16) const
+    {
+        return afl::str::toHexDump(encode<CT>(), bytesPerLine);
+    }
+
+    /** 从 hex 文本解码；接受的格式见 afl::str::parseHexBytes */
+    template <CodecType CT>
+    bool decodeHex(const std::string& hexText, bool record = false)
+    {
+        std::string bytes;
+        if (!afl::str::parseHexBytes(hexText, bytes)) {
+            return false;
+        }
+        return decode<CT>(bytes, record);
+    }
+
+    bool printTo(char* ptr, size_t& len) const
+    {
+        if (ptr == 0 || len == 0) {
+            return false;
+        }
+        const std::string text = dump();
+        if (text.empty()) {
+            return false;
+        }
+        const size_t n = (text.size() < len) ? text.size() : len;
+        memcpy(ptr, text.data(), n);
+        len = n;
         return true;
     }
 
